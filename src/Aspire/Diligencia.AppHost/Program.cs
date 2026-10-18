@@ -1,3 +1,5 @@
+using Aspire.Hosting.JavaScript;
+
 var builder = DistributedApplication.CreateBuilder(args);
 
 // Contraseñas generadas una vez y persistidas en los user-secrets del AppHost; nunca versionadas.
@@ -45,14 +47,21 @@ builder.AddProject<Projects.Diligencia_Worker>("worker")
     .WithHttpHealthCheck("/health")
     .WaitForCompletion(migrations);
 
-builder.AddViteApp("backoffice", "../../../apps/backoffice")
+var backoffice = builder.AddViteApp("backoffice", "../../../apps/backoffice")
     .WithReference(api)
     .WaitFor(api)
     .WithHttpHealthCheck("/");
 
-builder.AddViteApp("portal", "../../../apps/portal")
+var portal = builder.AddViteApp("portal", "../../../apps/portal")
     .WithReference(api)
     .WaitFor(api)
     .WithHttpHealthCheck("/");
+
+// Ambos `npm install` escriben el mismo node_modules del workspace; en paralelo chocan (EEXIST al crear el
+// symlink de @diligencia/ui). Se serializan: el instalador del portal espera al del backoffice.
+IResourceBuilder<ExecutableResource> Installer(IResourceBuilder<ViteAppResource> app) =>
+    builder.CreateResourceBuilder(app.Resource.Annotations.OfType<JavaScriptPackageInstallerAnnotation>().Single().Resource);
+
+Installer(portal).WaitForCompletion(Installer(backoffice));
 
 builder.Build().Run();
