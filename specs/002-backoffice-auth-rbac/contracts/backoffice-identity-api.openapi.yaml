@@ -1,0 +1,350 @@
+openapi: 3.1.0
+info:
+  title: Diligencia — Identidad del backoffice
+  version: 0.2.0
+  description: |
+    Autenticación de usuarios internos y gestión de usuarios y áreas (RF-28).
+    Todas las rutas viven bajo /api/backoffice (esquema JWT Backoffice).
+    El token viaja en la cookie HttpOnly `dlg_bo` (o en `Authorization: Bearer`).
+    Errores: ProblemDetails (application/problem+json) con `correlationId`.
+    401 = sin sesión válida (no autenticado); 403 = sesión válida sin el rol (acceso denegado).
+servers:
+  - url: /api/backoffice
+security:
+  - cookieAuth: []
+  - bearerAuth: []
+
+paths:
+  /auth/login:
+    post:
+      summary: Ingreso con correo y contraseña (anónimo, con límite de tasa)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '204':
+          description: Ingreso correcto. Crea la sesión.
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+              description: 'dlg_bo=<jwt>; HttpOnly; Secure; SameSite=Strict; Path=/api/backoffice'
+        '400': { $ref: '#/components/responses/ValidationProblem' }
+        '401':
+          description: |
+            Mismo cuerpo para correo inexistente, usuario desactivado, cuenta bloqueada o
+            contraseña errónea: title = "Correo o contraseña incorrectos." (FR-002, SC-006).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '429': { description: Demasiados intentos desde este origen. }
+
+  /auth/logout:
+    post:
+      summary: Cierra la sesión actual (revoca la sesión y borra la cookie)
+      responses:
+        '204': { description: Sesión cerrada. }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+
+  /auth/me:
+    get:
+      summary: Usuario de la sesión actual y sus roles (cualquier rol)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Me' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+
+  /auth/password/forgot:
+    post:
+      summary: Pide un enlace de recuperación (anónimo, con límite de tasa)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email, maxLength: 254 }
+      responses:
+        '202': { description: Siempre, exista o no el correo. Si existe y está activo, se envía un enlace de 60 min. }
+        '400': { $ref: '#/components/responses/ValidationProblem' }
+        '429': { description: Demasiadas solicitudes desde este origen. }
+
+  /auth/password/reset:
+    post:
+      summary: Establece la contraseña con un enlace de invitación o de recuperación (anónimo)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, newPassword]
+              properties:
+                token: { type: string, description: 'Token base64url del enlace' }
+                newPassword: { type: string, minLength: 12, maxLength: 64, description: '≤ 72 bytes UTF-8' }
+      responses:
+        '204': { description: Contraseña establecida. Revoca las sesiones abiertas del usuario y limpia el bloqueo. }
+        '400':
+          description: Contraseña inválida, o enlace inválido, usado o vencido (mensaje único para los tres).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '429': { description: Demasiadas solicitudes desde este origen. }
+
+  /users:
+    get:
+      summary: Lista usuarios (Administrador, Auditor)
+      parameters:
+        - { name: role, in: query, schema: { $ref: '#/components/schemas/Role' } }
+        - { name: areaId, in: query, schema: { type: string, format: uuid } }
+        - { name: status, in: query, schema: { type: string, enum: [active, inactive] } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      summary: Crea un usuario y le envía el enlace para establecer su contraseña (Administrador)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UserWrite' }
+      responses:
+        '201':
+          headers:
+            Location: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/ValidationProblem' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: Correo ya registrado, o área inexistente o desactivada. }
+
+  /users/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      summary: Detalle de un usuario (Administrador, Auditor)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: No existe. }
+    put:
+      summary: Edita nombre, correo, área y roles (Administrador)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UserWrite' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/ValidationProblem' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: No existe. }
+        '409': { description: Correo duplicado, área desactivada, o quitaría el rol al último administrador activo. }
+
+  /users/{id}/deactivate:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      summary: Desactiva el usuario y revoca sus sesiones (Administrador)
+      responses:
+        '204': { description: Desactivado (idempotente). }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: No existe. }
+        '409': { description: Es el último administrador activo. }
+
+  /users/{id}/reactivate:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      summary: Reactiva el usuario con los roles que tenía (Administrador)
+      responses:
+        '204': { description: Reactivado (idempotente). }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: No existe. }
+
+  /areas:
+    get:
+      summary: Lista áreas (Administrador, Auditor)
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [active, inactive] } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Area' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      summary: Crea un área (Administrador)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AreaWrite' }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Area' }
+        '400': { $ref: '#/components/responses/ValidationProblem' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: Nombre duplicado. }
+
+  /areas/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    put:
+      summary: Renombra un área (Administrador)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AreaWrite' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Area' }
+        '400': { $ref: '#/components/responses/ValidationProblem' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: No existe. }
+        '409': { description: Nombre duplicado. }
+
+  /areas/{id}/deactivate:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      summary: Desactiva un área; deja de poder asignarse (Administrador)
+      responses:
+        '204': { description: Desactivada (idempotente). }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: No existe. }
+
+  /areas/{id}/reactivate:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      summary: Reactiva un área (Administrador)
+      responses:
+        '204': { description: Reactivada (idempotente). }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: No existe. }
+
+components:
+  securitySchemes:
+    cookieAuth: { type: apiKey, in: cookie, name: dlg_bo }
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+
+  responses:
+    Unauthenticated:
+      description: Sin sesión, sesión vencida (30 min de inactividad u 8 h), revocada, o usuario desactivado.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Forbidden:
+      description: Sesión válida sin el rol requerido. Se registra AccessDenied en la bitácora.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    ValidationProblem:
+      description: Errores de validación por campo (FluentValidation).
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+
+  schemas:
+    Role:
+      type: string
+      enum: [Solicitante, Analista, Aprobador, Administrador, Auditor]
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, maxLength: 254 }
+        password: { type: string, maxLength: 128 }
+    Me:
+      type: object
+      required: [id, name, email, areaName, roles]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string }
+        areaName: { type: string }
+        roles: { type: array, items: { $ref: '#/components/schemas/Role' } }
+    UserWrite:
+      type: object
+      required: [name, email, areaId, roles]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        email: { type: string, format: email, maxLength: 254, description: 'Se normaliza: trim + minúsculas' }
+        areaId: { type: string, format: uuid }
+        roles:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/Role' }
+    User:
+      type: object
+      required: [id, name, email, areaId, areaName, roles, isActive, hasPassword]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string }
+        areaId: { type: string, format: uuid }
+        areaName: { type: string }
+        roles: { type: array, items: { $ref: '#/components/schemas/Role' } }
+        isActive: { type: boolean }
+        hasPassword: { type: boolean, description: 'false mientras no usó el enlace de invitación' }
+        lastLoginAtUtc: { type: [string, 'null'], format: date-time }
+    AreaWrite:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+    Area:
+      type: object
+      required: [id, name, isActive]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        isActive: { type: boolean }
+    Problem:
+      type: object
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        errors: { type: object, additionalProperties: { type: array, items: { type: string } } }
+        correlationId: { type: string }

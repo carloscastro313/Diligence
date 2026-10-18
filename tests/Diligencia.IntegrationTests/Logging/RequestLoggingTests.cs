@@ -9,12 +9,12 @@ using Microsoft.Extensions.Logging.Testing;
 namespace Diligencia.IntegrationTests.Logging;
 
 // T088 / FR-012 / FR-014: log de solicitud sin datos sensibles, scopes de correlación y nivel configurable.
-public class RequestLoggingTests
+public class RequestLoggingTests(SqlServerFixture sql)
 {
     private const string HttpLoggingCategory = "Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware";
     private const string Ping = "/api/backoffice/_test/ping";
 
-    private sealed class LoggedFactory(string? httpLoggingLevel = null) : ApiFactory
+    private sealed class LoggedFactory(string connectionString, string? httpLoggingLevel = null) : DbApiFactory(connectionString)
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -25,9 +25,9 @@ public class RequestLoggingTests
         }
     }
 
-    private static async Task<string> Send(LoggedFactory factory, string query, string correlationId)
+    private async Task<string> Send(LoggedFactory factory, string query, string correlationId)
     {
-        var token = TestTokens.Create(ActorSurface.Backoffice, "ana", BackofficeRoles.Analista);
+        var token = (await TestUsers.CreateAsync(sql.RuntimeConnectionString, factory.Clock, [BackofficeRoles.Analista])).Token;
         using var client = factory.CreateClient();
         using var req = new HttpRequestMessage(HttpMethod.Get, Ping + query);
         req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -44,7 +44,7 @@ public class RequestLoggingTests
     [Fact]
     public async Task RequestLog_HasMethodPathStatusDuration_AndNoSensitiveData()
     {
-        await using var factory = new LoggedFactory();
+        await using var factory = new LoggedFactory(sql.RuntimeConnectionString);
         var token = await Send(factory, "?secret=query-value-123", "corr-log-1");
 
         var record = Assert.Single(HttpLogs(factory));
@@ -67,7 +67,7 @@ public class RequestLoggingTests
     [Fact]
     public async Task RequestLogs_CarryCorrelationIdAndServiceScopes()
     {
-        await using var factory = new LoggedFactory();
+        await using var factory = new LoggedFactory(sql.RuntimeConnectionString);
         await Send(factory, "", "corr-scope-42");
 
         var record = Assert.Single(HttpLogs(factory));
@@ -80,9 +80,9 @@ public class RequestLoggingTests
     [Fact]
     public async Task LogLevelConfiguration_ChangesVolume_WithoutCodeChanges()
     {
-        await using var info = new LoggedFactory("Information");
+        await using var info = new LoggedFactory(sql.RuntimeConnectionString, "Information");
         await Send(info, "", "corr-vol-1");
-        await using var warn = new LoggedFactory("Warning");
+        await using var warn = new LoggedFactory(sql.RuntimeConnectionString, "Warning");
         await Send(warn, "", "corr-vol-2");
 
         Assert.NotEmpty(HttpLogs(info));

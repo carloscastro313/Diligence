@@ -66,7 +66,7 @@ de excepción ni datos de conexión.
 | `ConnectionStrings:diligencia` | api, worker, migrations | sí | identidad propia del proceso: runtime (api/worker), migrador (migrations) |
 | `ConnectionStrings:diligencia-runtime` | migrations | solo con bootstrap | de ahí salen usuario y contraseña del login de runtime |
 | `ConnectionStrings:diligencia-admin` | migrations | no | su presencia activa el bootstrap (local/CI) |
-| `Authentication:Schemes:Backoffice:ValidIssuer` / `ValidAudiences` / `SigningKeys` | api | sí | `dotnet user-jwts` en local |
+| `Authentication:Schemes:Backoffice:ValidIssuer` / `ValidAudiences` / `SigningKeys` | api | sí | la clave la genera el AppHost (`backoffice-signing-key`); la API emite estos JWT al ingresar (feature 002) |
 | `Authentication:Schemes:Portal:ValidIssuer` / `ValidAudiences` / `SigningKeys` | api | sí | ídem |
 | `Diagnostics:Enabled` | api | no (`false`) | `true` en Development y tests |
 | `Logging:*` | todos | no | ver §2 |
@@ -79,13 +79,15 @@ para las contraseñas de SQL, variables de entorno en CI.
 
 ## 6. Tokens de desarrollo y de test (FR-004)
 
-No hay endpoint de emisión.
+El backoffice emite sus propios tokens al ingresar (`POST /api/backoffice/auth/login`, feature 002); el portal sigue sin
+endpoint de emisión hasta RF-05.
 
 | Contexto | Cómo se obtiene |
 |---|---|
-| Local, backoffice | `dotnet user-jwts create --project src/Hosts/Diligencia.Api --scheme Backoffice --issuer diligencia-backoffice-dev --audience diligencia-backoffice --name ana --role Auditor` |
+| Local, backoffice | Ingreso real: ver `specs/002-backoffice-auth-rbac/quickstart.md` (el JWT va en la cookie `dlg_bo` o como Bearer) |
 | Local, portal | `dotnet user-jwts create --project src/Hosts/Diligencia.Api --scheme Portal --issuer diligencia-portal-dev --audience diligencia-portal --name tercero-1` |
-| Tests de integración | `TestTokens.Create(ActorSurface.Backoffice, sub: "ana", roles: ["Auditor"])` firma con la clave de test de esa superficie |
+| Tests de integración, backoffice | `TestUsers.CreateAsync(...)` inserta usuario + roles + sesión y devuelve el JWT (con `sid`) firmado con la clave de test |
+| Tests de integración, portal | `TestUsers.CreatePortalToken("tercero-1")` |
 
 Un token firmado para un esquema es rechazado con 401 en el otro grupo.
 

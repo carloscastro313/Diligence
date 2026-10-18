@@ -15,14 +15,11 @@ public class AppHostSmokeTests
     {
         var ct = TestContext.Current.CancellationToken;
 
-        // La API exige claves de firma (en local vienen de user-jwts); los procesos hijos heredan el entorno.
-        foreach (var (surface, scheme) in new[] { (ActorSurface.Backoffice, AuthSchemes.Backoffice), (ActorSurface.Portal, AuthSchemes.Portal) })
-        {
-            var s = TestTokens.For(surface);
-            Environment.SetEnvironmentVariable($"Authentication__Schemes__{scheme}__ValidIssuer", s.Issuer);
-            Environment.SetEnvironmentVariable($"Authentication__Schemes__{scheme}__ValidAudiences__0", s.Audience);
-            Environment.SetEnvironmentVariable($"Authentication__Schemes__{scheme}__SigningKeys__0__Value", Convert.ToBase64String(s.Key));
-        }
+        // La API exige claves de firma del portal (en local vienen de user-jwts); la del backoffice la fija el AppHost.
+        var portal = TestUsers.For(ActorSurface.Portal);
+        Environment.SetEnvironmentVariable($"Authentication__Schemes__{AuthSchemes.Portal}__ValidIssuer", portal.Issuer);
+        Environment.SetEnvironmentVariable($"Authentication__Schemes__{AuthSchemes.Portal}__ValidAudiences__0", portal.Audience);
+        Environment.SetEnvironmentVariable($"Authentication__Schemes__{AuthSchemes.Portal}__SigningKeys__0__Value", Convert.ToBase64String(portal.Key));
 
         var appHost = await DistributedApplicationTestingBuilder.CreateAsync<apphost::Program>(["--Diligencia:EphemeralDatabase=true"], ct);
         await using var app = await appHost.BuildAsync(ct);

@@ -50,9 +50,9 @@ public class CorrelationEndToEndTests(SqlServerFixture sql)
         using var apiClient = api.CreateClient();
         using var workerClient = worker.CreateClient(); // arranca el host y el servidor de Hangfire
 
+        var admin = await TestUsers.CreateAsync(sql.RuntimeConnectionString, api.Clock, [BackofficeRoles.Administrador]);
         using var req = new HttpRequestMessage(HttpMethod.Post, "/api/backoffice/diagnostics/jobs");
-        req.Headers.Authorization = new AuthenticationHeaderValue("Bearer",
-            TestTokens.Create(ActorSurface.Backoffice, "root", BackofficeRoles.Administrador));
+        req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", admin.Token);
         req.Headers.TryAddWithoutValidation("X-Correlation-Id", id);
         using var res = await apiClient.SendAsync(req, ct);
 

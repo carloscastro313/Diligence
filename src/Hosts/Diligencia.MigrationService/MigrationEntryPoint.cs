@@ -40,5 +40,6 @@ internal static class MigrationEntryPoint
 
         using var host = builder.Build();
         await host.Services.GetRequiredService<DatabaseProvisioner>().RunAsync(CancellationToken.None);
+        await IdentidadModule.BootstrapAdministratorAsync(host.Services, CancellationToken.None);
     }
 }

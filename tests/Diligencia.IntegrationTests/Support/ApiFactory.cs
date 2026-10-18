@@ -1,4 +1,8 @@
 using Diligencia.Modules.Identidad.Contracts;
+using Diligencia.Modules.Identidad.Email;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Time.Testing;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -13,12 +17,20 @@ public class ApiFactory : WebApplicationFactory<Program>
     // Los tests que no tocan la base usan una cadena que nunca se conecta; null = falta la clave (FR-006).
     protected virtual string? ConnectionString => "Server=127.0.0.1,1;Database=unused;User Id=x;Password=x;Connect Timeout=1;TrustServerCertificate=true";
 
+    // En TestServer la IP remota es nula y todos los tests comparten la partición del limitador (R12).
+    protected virtual int AuthRateLimitPerMinute => 100_000;
+
+    public FakeTimeProvider Clock { get; } = new(DateTimeOffset.UtcNow);
+    public FakeEmailSender Emails { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.UseSetting("Identidad:BackofficeBaseUrl", "http://test.local");
+        builder.UseSetting("Identidad:AuthRateLimitPerMinute", AuthRateLimitPerMinute.ToString());
         if (ConnectionString is not null) builder.UseSetting("ConnectionStrings:diligencia", ConnectionString);
         foreach (var (surface, scheme) in new[] { (ActorSurface.Backoffice, AuthSchemes.Backoffice), (ActorSurface.Portal, AuthSchemes.Portal) })
         {
-            var s = TestTokens.For(surface);
+            var s = TestUsers.For(surface);
             var p = $"Authentication:Schemes:{scheme}";
             builder.UseSetting($"{p}:ValidIssuer", s.Issuer);
             builder.UseSetting($"{p}:ValidAudiences:0", s.Audience);
@@ -26,6 +38,13 @@ public class ApiFactory : WebApplicationFactory<Program>
         }
 
         builder.ConfigureServices(services => services.AddTransient<IStartupFilter, TestRoutesFilter>());
+        builder.ConfigureTestServices(services =>
+        {
+            services.RemoveAll<TimeProvider>();
+            services.AddSingleton<TimeProvider>(Clock);
+            services.RemoveAll<IEmailSender>();
+            services.AddSingleton<IEmailSender>(Emails);
+        });
     }
 
     // Rutas de prueba bajo cada superficie (la feature aún no tiene endpoints de negocio). Se agregan al mismo

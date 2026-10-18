@@ -12,11 +12,15 @@ using Microsoft.Extensions.Logging;
 namespace Diligencia.IntegrationTests.Logging;
 
 // US3-5 / FR-016: un 500 devuelve ProblemDetails genérico con correlationId, sin detalle interno; el log sí lo registra.
-public class UnhandledErrorTests(UnhandledErrorTests.BoomApiFactory factory) : IClassFixture<UnhandledErrorTests.BoomApiFactory>
+public class UnhandledErrorTests(SqlServerFixture sql) : IAsyncDisposable
 {
+    private readonly BoomApiFactory factory = new(sql.RuntimeConnectionString);
+
+    public ValueTask DisposeAsync() => factory.DisposeAsync();
+
     private const string Secret = "secreto-interno-xyz";
 
-    public sealed class BoomApiFactory : ApiFactory
+    public sealed class BoomApiFactory(string connectionString) : DbApiFactory(connectionString)
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -45,8 +49,8 @@ public class UnhandledErrorTests(UnhandledErrorTests.BoomApiFactory factory) : I
     {
         using var client = factory.CreateClient();
         using var req = new HttpRequestMessage(HttpMethod.Get, path);
-        req.Headers.Authorization = new AuthenticationHeaderValue("Bearer",
-            TestTokens.Create(ActorSurface.Backoffice, "ana", BackofficeRoles.Analista));
+        var user = await TestUsers.CreateAsync(sql.RuntimeConnectionString, factory.Clock, [BackofficeRoles.Analista]);
+        req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", user.Token);
         var res = await client.SendAsync(req, TestContext.Current.CancellationToken);
         return (res, await res.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
     }

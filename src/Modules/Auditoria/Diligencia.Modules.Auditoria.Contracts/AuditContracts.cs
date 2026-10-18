@@ -25,4 +25,9 @@ public sealed record AuditChange(
     string? NewValue,
     bool IsSensitive = false);
 
-public enum AuditAction { Created, Updated, SensitiveDataViewed, Downloaded, Decision }
+public enum AuditAction
+{
+    Created, Updated, SensitiveDataViewed, Downloaded, Decision,
+    LoginSucceeded, LoginFailed, LoggedOut, AccountLocked,
+    PasswordResetRequested, PasswordSet, AccessDenied,
+}

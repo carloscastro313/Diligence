@@ -9,6 +9,14 @@ public class EndpointSurfaceTests(ApiFactory factory) : IClassFixture<ApiFactory
 {
     private static readonly string[] Open = ["/health", "/alive"];
 
+    // Lista cerrada de endpoints anónimos (Principio V): solo la autenticación del backoffice.
+    private static readonly string[] Anonymous =
+    [
+        "/api/backoffice/auth/login",
+        "/api/backoffice/auth/password/forgot",
+        "/api/backoffice/auth/password/reset",
+    ];
+
     [Fact]
     public void EveryEndpoint_IsUnderASurface_AndHasAuthorizationMetadata()
     {
@@ -22,7 +30,8 @@ public class EndpointSurfaceTests(ApiFactory factory) : IClassFixture<ApiFactory
                 var path = e.RoutePattern.RawText ?? "";
                 var underSurface = path.StartsWith("/api/backoffice") || path.StartsWith("/api/portal");
                 var authorized = e.Metadata.GetMetadata<IAuthorizeData>() is not null;
-                return !underSurface || !authorized;
+                var anonymous = e.Metadata.GetMetadata<IAllowAnonymous>() is not null;
+                return !underSurface || !authorized || (anonymous && !Anonymous.Contains(path));
             })
             .Select(e => e.RoutePattern.RawText);
 

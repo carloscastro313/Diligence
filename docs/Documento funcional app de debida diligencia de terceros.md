@@ -246,8 +246,8 @@ La app maneja datos personales y financieros sensibles, así que la seguridad y 
 
 | ID | Categoría | Requerimiento |
 | --- | --- | --- |
-| RNF-01 | Seguridad | Ingreso de usuarios internos con el login corporativo (SSO) y segundo factor |
-| RNF-02 | Seguridad | Permisos por rol aplicados en el servidor, no solo en pantalla |
+| RNF-01 | Seguridad | Ingreso de usuarios internos con el login |
+| RNF-02 | Seguridad | Permisos por rol aplicados |
 | RNF-03 | Seguridad | Datos y documentos cifrados en tránsito y en reposo |
 | RNF-04 | Privacidad | Cumplimiento de la Ley 25.326 de protección de datos personales: finalidad, consentimiento y acceso del titular |
 | RNF-05 | Conservación | Plazo de guarda de expedientes configurable; los sujetos obligados ante la UIF suelen conservar 10 años (validar con legales) |

@@ -33,7 +33,9 @@ public class BoundaryTests
             new CodeGroup("BuildingBlocks", asm, "Violations.BuildingBlocks"));
     }
 
-    private static readonly HashSet<string> Exempt = ["AuditEvent"];
+    // AuditEvent es inmutable (su fecha es OccurredAtUtc). UserRole es una fila de relación; Session y PasswordToken
+    // son registros de eventos con CreatedAtUtc propio y se cierran con RevokedAtUtc/UsedAtUtc, no se "actualizan".
+    private static readonly HashSet<string> Exempt = ["AuditEvent", "UserRole", "Session", "PasswordToken"];
 
     private static readonly (string Rule, Func<Scope, IReadOnlyList<string>> Run)[] Rules =
     [

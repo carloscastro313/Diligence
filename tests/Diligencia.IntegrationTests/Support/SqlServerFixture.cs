@@ -43,6 +43,25 @@ public sealed class SqlServerFixture : IAsyncLifetime
             UserID = user, Password = password, InitialCatalog = database, TrustServerCertificate = true,
         }.ConnectionString;
 
+    public sealed record IsolatedDatabase(string Runtime, string Migrator, Dictionary<string, string?> Settings);
+
+    /// <summary>Una base nueva y migrada, para los tests que no pueden compartir datos con el resto.</summary>
+    public async Task<IsolatedDatabase> CreateDatabaseAsync(Dictionary<string, string?>? extraSettings = null)
+    {
+        var name = "iso_" + Guid.NewGuid().ToString("N")[..12];
+        var migrator = For("diligencia_migrator", MigratorPassword, name);
+        var runtime = For("diligencia_app", RuntimePassword, name);
+        var settings = new Dictionary<string, string?>
+        {
+            ["ConnectionStrings:diligencia"] = migrator,
+            ["ConnectionStrings:diligencia-runtime"] = runtime,
+            ["ConnectionStrings:diligencia-admin"] = AdminConnectionString,
+        };
+        foreach (var (k, v) in extraSettings ?? []) settings[k] = v;
+        await MigrateAsync(settings);
+        return new IsolatedDatabase(runtime, migrator, settings);
+    }
+
     public static Task MigrateAsync(Dictionary<string, string?> settings) =>
         MigrationEntryPoint.RunAsync([], settings);
 

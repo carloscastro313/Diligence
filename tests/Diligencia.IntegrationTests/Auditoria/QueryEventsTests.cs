@@ -27,8 +27,9 @@ public class QueryEventsTests(SqlServerFixture sql) : IAsyncLifetime
         await _factory.DisposeAsync();
     }
 
-    private static string Token(string role, string sub = "ana") =>
-        TestTokens.Create(ActorSurface.Backoffice, sub, role);
+    // Usuario real con sesión; el actor de la bitácora es su id.
+    private async Task<TestUser> UserAsync(string role) => await TestUsers.CreateAsync(sql.RuntimeConnectionString, _factory.Clock, [role]);
+    private async Task<string> Token(string role) => (await UserAsync(role)).Token;
 
     private async Task<HttpResponseMessage> Query(string query, string? token = null)
     {
@@ -39,7 +40,7 @@ public class QueryEventsTests(SqlServerFixture sql) : IAsyncLifetime
 
     private async Task<JsonElement> QueryOk(string query, string? token = null)
     {
-        using var res = await Query(query, token ?? Token(BackofficeRoles.Auditor));
+        using var res = await Query(query, token ?? await Token(BackofficeRoles.Auditor));
         Assert.Equal(HttpStatusCode.OK, res.StatusCode);
         return (await res.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken)).Clone();
     }
@@ -104,7 +105,7 @@ public class QueryEventsTests(SqlServerFixture sql) : IAsyncLifetime
     [InlineData("?pageSize=101")]
     public async Task InvalidParameters_Return400(string query)
     {
-        using var res = await Query(query, Token(BackofficeRoles.Auditor));
+        using var res = await Query(query, await Token(BackofficeRoles.Auditor));
         Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
         Assert.Equal("application/problem+json", res.Content.Headers.ContentType?.MediaType);
     }
@@ -112,22 +113,23 @@ public class QueryEventsTests(SqlServerFixture sql) : IAsyncLifetime
     [Fact]
     public async Task Authorization_RolesAndSchemes()
     {
-        using (var r = await Query("", Token(BackofficeRoles.Administrador))) Assert.Equal(HttpStatusCode.OK, r.StatusCode);
-        using (var r = await Query("", Token(BackofficeRoles.Analista))) Assert.Equal(HttpStatusCode.Forbidden, r.StatusCode);
-        using (var r = await Query("", TestTokens.Create(ActorSurface.Portal, "t"))) Assert.Equal(HttpStatusCode.Unauthorized, r.StatusCode);
+        using (var r = await Query("", await Token(BackofficeRoles.Administrador))) Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        using (var r = await Query("", await Token(BackofficeRoles.Analista))) Assert.Equal(HttpStatusCode.Forbidden, r.StatusCode);
+        using (var r = await Query("", TestUsers.CreatePortalToken("t"))) Assert.Equal(HttpStatusCode.Unauthorized, r.StatusCode);
         using (var r = await Query("")) Assert.Equal(HttpStatusCode.Unauthorized, r.StatusCode);
     }
 
     [Fact]
     public async Task EveryQuery_IsItselfAudited_AsSensitiveDataViewed()
     {
-        var actor = "auditor-" + Guid.NewGuid().ToString("N");
+        var auditor = await UserAsync(BackofficeRoles.Auditor);
+        var actor = auditor.Id.ToString();
         var type = "T" + Guid.NewGuid().ToString("N");
 
-        await QueryOk($"?entityType={type}", Token(BackofficeRoles.Auditor, actor));
-        await QueryOk($"?entityType={type}&pageSize=10", Token(BackofficeRoles.Auditor, actor));
+        await QueryOk($"?entityType={type}", auditor.Token);
+        await QueryOk($"?entityType={type}&pageSize=10", auditor.Token);
 
-        var audit = await QueryOk($"?entityType=AuditLog&actorId={actor}", Token(BackofficeRoles.Auditor, actor));
+        var audit = await QueryOk($"?entityType=AuditLog&actorId={actor}", auditor.Token);
         var items = audit.GetProperty("items").EnumerateArray().ToList();
         // Las dos consultas anteriores más la que acaba de hacerse.
         Assert.Equal(3, items.Count);

@@ -22,9 +22,9 @@ Alternativa sin trabajar en WSL: CLI `docker` en Windows apuntando al daemon de 
 
 ```bash
 git clone <repo> diligencia && cd diligencia
-# Una sola vez: genera las claves de firma en los user-secrets de la API (sin ellas la API no arranca)
+# Una sola vez: genera la clave de firma del portal en los user-secrets de la API (sin ella la API no arranca).
+# La del backoffice ya no: la genera el AppHost (ver specs/002-backoffice-auth-rbac/quickstart.md).
 (cd src/Hosts/Diligencia.Api &&
-  dotnet user-jwts create --scheme Backoffice --issuer diligencia-backoffice-dev --audience diligencia-backoffice --name ana --role Auditor &&
   dotnet user-jwts create --scheme Portal --issuer diligencia-portal-dev --audience diligencia-portal --name tercero-1)
 dotnet run --project src/Aspire/Diligencia.AppHost
 ```
@@ -67,9 +67,12 @@ DELETE FROM auditoria.AuditEvents;                -- error 229
 
 ```bash
 cd src/Hosts/Diligencia.Api
-BO=$(dotnet user-jwts create --scheme Backoffice --issuer diligencia-backoffice-dev --audience diligencia-backoffice --name ana --role Auditor -o token)
-PO=$(dotnet user-jwts create --scheme Portal --issuer diligencia-portal-dev --audience diligencia-portal --name tercero-1 -o token)
 API=http://localhost:<puerto-api>
+# Backoffice: ingreso real (specs/002-backoffice-auth-rbac/quickstart.md). El JWT viaja en la cookie dlg_bo,
+# pero también se acepta como Bearer; con un usuario Auditor o Administrador:
+BO=$(curl -si -X POST "$API/api/backoffice/auth/login" -H 'Content-Type: application/json' \
+  -d '{"email":"admin@diligencia.local","password":"<la que estableciste>"}' | sed -n 's/^[Ss]et-[Cc]ookie: dlg_bo=\([^;]*\).*/\1/p')
+PO=$(dotnet user-jwts create --scheme Portal --issuer diligencia-portal-dev --audience diligencia-portal --name tercero-1 -o token)
 curl -si -H "Authorization: Bearer $BO" "$API/api/backoffice/audit/events"   # 200
 curl -si -H "Authorization: Bearer $PO" "$API/api/backoffice/audit/events"   # 401 (token de portal)
 ```
@@ -83,14 +86,14 @@ curl -s -H "Authorization: Bearer $BO" "$API/api/backoffice/audit/events?entityT
 ```
 
 Esperado: aparece un evento `SensitiveDataViewed` por cada consulta anterior (FR-022), con
-`actorId: "ana"`, `surface: "Backoffice"` y el `correlationId` de esa solicitud. El registro de
+`actorId` = el id del usuario que consultó, `surface: "Backoffice"` y el `correlationId` de esa solicitud. El registro de
 cambios de negocio (US4-1, -2, -6) se valida con los tests de integración del paso 7, que usan un
 módulo de prueba.
 
 ## 6. Correlación API → worker (US3, SC-004)
 
 ```bash
-ADM=$(dotnet user-jwts create --scheme Backoffice --issuer diligencia-backoffice-dev --audience diligencia-backoffice --name admin --role Administrador -o token)
+ADM=$BO   # el token de un Administrador, obtenido con el ingreso del paso 4
 curl -si -X POST -H "Authorization: Bearer $ADM" -H "X-Correlation-Id: demo-123" "$API/api/backoffice/diagnostics/jobs"
 ```
 

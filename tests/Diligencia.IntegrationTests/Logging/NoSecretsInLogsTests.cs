@@ -54,7 +54,7 @@ public class NoSecretsInLogsTests(SqlServerFixture sql)
         var ct = TestContext.Current.CancellationToken;
         await using var factory = new UploadApiFactory(sql.RuntimeConnectionString);
         using var client = factory.CreateClient();
-        var token = TestTokens.Create(ActorSurface.Backoffice, "ana", BackofficeRoles.Auditor);
+        var token = (await TestUsers.CreateAsync(sql.RuntimeConnectionString, factory.Clock, [BackofficeRoles.Auditor])).Token;
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         using var form = new MultipartFormDataContent

@@ -46,6 +46,7 @@ app.UseStatusCodePages();
 app.UseHttpLogging();
 
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 
 var surfaces = new ApiSurfaces(

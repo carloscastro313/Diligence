@@ -1,45 +1,41 @@
 using System.Net;
-using System.Net.Http.Headers;
 using Diligencia.IntegrationTests.Support;
 using Diligencia.Modules.Identidad.Contracts;
 
 namespace Diligencia.IntegrationTests.Api;
 
-public class AuthenticationSurfaceTests(ApiFactory factory) : IClassFixture<ApiFactory>
+public class AuthenticationSurfaceTests(SqlServerFixture sql) : IdentidadApiTest(sql)
 {
-    private async Task<HttpStatusCode> Get(string path, string? token)
+    private async Task<HttpStatusCode> Status(string path, TestUser? user = null, string? token = null)
     {
-        using var client = factory.CreateClient();
-        using var req = new HttpRequestMessage(HttpMethod.Get, path);
-        if (token is not null) req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        using var res = await client.SendAsync(req, TestContext.Current.CancellationToken);
+        using var res = await SendRaw(HttpMethod.Get, path, token ?? user?.Token);
         return res.StatusCode;
     }
 
     [Fact]
-    public async Task ValidToken_EachSurface_Returns200() 
+    public async Task ValidToken_EachSurface_Returns200()
     {
-        Assert.Equal(HttpStatusCode.OK, await Get("/api/backoffice/_test/ping", TestTokens.Create(ActorSurface.Backoffice, "ana", BackofficeRoles.Analista)));
-        Assert.Equal(HttpStatusCode.OK, await Get("/api/portal/_test/ping", TestTokens.Create(ActorSurface.Portal, "tercero-1")));
+        Assert.Equal(HttpStatusCode.OK, await Status("/api/backoffice/_test/ping", await UserAsync(BackofficeRoles.Analista)));
+        Assert.Equal(HttpStatusCode.OK, await Status("/api/portal/_test/ping", token: TestUsers.CreatePortalToken("tercero-1")));
     }
 
     [Fact]
     public async Task NoToken_Returns401() =>
-        Assert.Equal(HttpStatusCode.Unauthorized, await Get("/api/backoffice/_test/ping", null));
+        Assert.Equal(HttpStatusCode.Unauthorized, await Status("/api/backoffice/_test/ping"));
 
     [Fact]
     public async Task PortalToken_InBackoffice_Returns401() =>
-        Assert.Equal(HttpStatusCode.Unauthorized, await Get("/api/backoffice/_test/ping", TestTokens.Create(ActorSurface.Portal, "t")));
+        Assert.Equal(HttpStatusCode.Unauthorized, await Status("/api/backoffice/_test/ping", token: TestUsers.CreatePortalToken("t")));
 
     [Fact]
     public async Task BackofficeToken_InPortal_Returns401() =>
-        Assert.Equal(HttpStatusCode.Unauthorized, await Get("/api/portal/_test/ping", TestTokens.Create(ActorSurface.Backoffice, "ana", BackofficeRoles.Administrador)));
+        Assert.Equal(HttpStatusCode.Unauthorized, await Status("/api/portal/_test/ping", await UserAsync(BackofficeRoles.Administrador)));
 
     [Fact]
     public async Task InsufficientRole_Returns403() =>
-        Assert.Equal(HttpStatusCode.Forbidden, await Get("/api/backoffice/_test/admin", TestTokens.Create(ActorSurface.Backoffice, "ana", BackofficeRoles.Analista)));
+        Assert.Equal(HttpStatusCode.Forbidden, await Status("/api/backoffice/_test/admin", await UserAsync(BackofficeRoles.Analista)));
 
     [Fact]
     public async Task Administrator_Returns200() =>
-        Assert.Equal(HttpStatusCode.OK, await Get("/api/backoffice/_test/admin", TestTokens.Create(ActorSurface.Backoffice, "root", BackofficeRoles.Administrador)));
+        Assert.Equal(HttpStatusCode.OK, await Status("/api/backoffice/_test/admin", await UserAsync(BackofficeRoles.Administrador)));
 }

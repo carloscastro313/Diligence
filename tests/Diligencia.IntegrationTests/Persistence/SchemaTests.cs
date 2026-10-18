@@ -23,7 +23,7 @@ public class SchemaTests(SqlServerFixture sql)
     public async Task EachModuleHistory_RecordsOnlyItsOwnMigrations()
     {
         foreach (var schema in Modules)
-            Assert.Equal(schema == "auditoria" ? 2 : 1, await SqlServerFixture.ScalarAsync<int>(sql.MigratorConnectionString,
+            Assert.Equal(schema is "auditoria" or "identidad" ? 2 : 1, await SqlServerFixture.ScalarAsync<int>(sql.MigratorConnectionString,
                 $"SELECT COUNT(*) FROM [{schema}].[__EFMigrationsHistory]"));
     }
 }

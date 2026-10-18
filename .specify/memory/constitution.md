@@ -1,5 +1,13 @@
 <!--
-Sync Impact Report
+Sync Impact Report (1.0.1, 2026-10-18)
+- Version change: 1.0.0 → 1.0.1 (PATCH: aclaración)
+- Principio modificado: V. Dos superficies de API — se aclara que los endpoints de ingreso y
+  recuperación de acceso pueden ser anónimos dentro de su grupo, con límite de tasa y en lista
+  cerrada verificada por test. Motivo: feature 002 (sin sesión no se puede obtener una sesión).
+- Impacto: ninguno sobre código existente; el test de superficie de endpoints acepta la lista.
+- Templates: sin cambios.
+
+Sync Impact Report (1.0.0)
 - Version change: (template sin ratificar) → 1.0.0
 - Principios definidos (antes placeholders):
   - [PRINCIPLE_1_NAME] → I. Monolito modular con vertical slices
@@ -90,7 +98,9 @@ fronteras.
   propias authorization policies. Un token de portal MUST NOT ser aceptado en backoffice y
   viceversa.
 - Cada feature declara explícitamente en qué grupo se publica. Ningún endpoint queda fuera de un
-  grupo ni sin policy.
+  grupo ni sin policy. Única excepción: los endpoints que obtienen o recuperan el acceso a una
+  superficie (ingreso, recuperación de credencial) pueden ser anónimos dentro de su grupo si
+  tienen límite de tasa y figuran por nombre en la lista cerrada del test de superficie.
 - En el portal, el tercero solo accede a sus propios datos y pedidos pendientes; el filtro por
   tercero se aplica en la API, no en el cliente.
 
@@ -187,4 +197,4 @@ o una acción sin registro invalida esa evidencia.
 - Cumplimiento: cada plan de feature pasa el Constitution Check antes de diseñar y después de
   diseñar; los tests de arquitectura y reglas de ESLint son la verificación continua.
 
-**Version**: 1.0.0 | **Ratified**: 2026-10-16 | **Last Amended**: 2026-10-16
+**Version**: 1.0.1 | **Ratified**: 2026-10-16 | **Last Amended**: 2026-10-18

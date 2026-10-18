@@ -29,4 +29,5 @@ public static class AuthPolicies
     public const string Portal = "Portal";
     public const string AuditReader = "AuditReader";
     public const string Administrator = "Administrator";
+    public const string UserDirectoryReader = "UserDirectoryReader";
 }

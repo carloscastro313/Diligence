@@ -13,6 +13,19 @@ var saPassword = Password("sql-sa-password");
 var migratorPassword = Password("sql-migrator-password");
 var runtimePassword = Password("sql-runtime-password");
 
+// Clave HMAC de las sesiones del backoffice: 64 caracteres alfanuméricos (base64 válido, 48 bytes), persistida como las demás.
+var backofficeSigningKey = builder.AddParameter(
+    "backoffice-signing-key",
+    new GenerateParameterDefault { MinLength = 64, Lower = true, Upper = true, Numeric = true, Special = false },
+    secret: true,
+    persist: true);
+
+// Buzón de pruebas para los correos de invitación y recuperación (UI web en el puerto 8025).
+var mailpit = builder.AddContainer("mailpit", "axllent/mailpit")
+    .WithEndpoint(targetPort: 1025, name: "smtp")
+    .WithHttpEndpoint(targetPort: 8025, name: "ui");
+var smtp = mailpit.GetEndpoint("smtp");
+
 var sql = builder.AddSqlServer("sql", saPassword);
 
 // Local: la base sobrevive entre arranques. Los tests de humo piden una base efímera para no heredar la
@@ -33,12 +46,16 @@ var runtimeConnection = ConnectionString("diligencia_app", runtimePassword);
 var migrations = builder.AddProject<Projects.Diligencia_MigrationService>("migrations")
     .WithEnvironment("ConnectionStrings__diligencia", migratorConnection)
     .WithEnvironment("ConnectionStrings__diligencia-runtime", runtimeConnection)
+    .WithEnvironment("Identidad__BootstrapAdmin__Email", "admin@diligencia.local")
     .WithEnvironment("ConnectionStrings__diligencia-admin",
         ReferenceExpression.Create($"Server=127.0.0.1,{sql.Resource.Port};User Id=sa;Password={saPassword};TrustServerCertificate=true"))
     .WaitFor(sql);
 
 var api = builder.AddProject<Projects.Diligencia_Api>("api")
     .WithEnvironment("ConnectionStrings__diligencia", runtimeConnection)
+    .WithEnvironment("Authentication__Schemes__Backoffice__SigningKeys__0__Value", backofficeSigningKey)
+    .WithEnvironment("Email__Smtp__Host", smtp.Property(EndpointProperty.Host))
+    .WithEnvironment("Email__Smtp__Port", smtp.Property(EndpointProperty.Port))
     .WithHttpHealthCheck("/health")
     .WaitForCompletion(migrations);
 
@@ -51,6 +68,9 @@ var backoffice = builder.AddViteApp("backoffice", "../../../apps/backoffice")
     .WithReference(api)
     .WaitFor(api)
     .WithHttpHealthCheck("/");
+
+// Los enlaces de los correos apuntan al backoffice.
+api.WithEnvironment("Identidad__BackofficeBaseUrl", backoffice.GetEndpoint("http"));
 
 var portal = builder.AddViteApp("portal", "../../../apps/portal")
     .WithReference(api)

@@ -16,6 +16,9 @@ internal static class PolicySetup
             .AddPolicy(AuthPolicies.AuditReader, p => p.AddAuthenticationSchemes(AuthSchemes.Backoffice)
                 .RequireAuthenticatedUser()
                 .RequireRole(BackofficeRoles.Auditor, BackofficeRoles.Administrador))
+            .AddPolicy(AuthPolicies.UserDirectoryReader, p => p.AddAuthenticationSchemes(AuthSchemes.Backoffice)
+                .RequireAuthenticatedUser()
+                .RequireRole(BackofficeRoles.Administrador, BackofficeRoles.Auditor))
             .AddPolicy(AuthPolicies.Administrator, p => p.AddAuthenticationSchemes(AuthSchemes.Backoffice)
                 .RequireAuthenticatedUser()
                 .RequireRole(BackofficeRoles.Administrador));
