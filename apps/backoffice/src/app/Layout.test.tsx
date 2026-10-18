@@ -33,3 +33,27 @@ test('un 401 en una pantalla protegida lleva a /login', async () => {
 
   await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
 });
+
+test('el enlace Mis solicitudes solo se ve con rol Solicitante', async () => {
+  const render_ = async (roles: string[]) => {
+    queryClient.clear();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
+      Promise.resolve(new Response(JSON.stringify({ ...session, roles }), { status: 200 })),
+    );
+    const router = createAppRouter(createMemoryHistory({ initialEntries: ['/'] }));
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+  };
+
+  const first = await render_(['Solicitante']);
+  expect(await screen.findByRole('link', { name: 'Mis solicitudes' })).toBeInTheDocument();
+  first.unmount();
+  vi.restoreAllMocks();
+
+  await render_(['Analista']);
+  expect(await screen.findByText('Ana')).toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: 'Mis solicitudes' })).not.toBeInTheDocument();
+});

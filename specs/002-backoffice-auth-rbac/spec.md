@@ -173,6 +173,8 @@ la bitácora y ver los intentos registrados.
   | --- | --- | --- | --- | --- | --- |
   | Gestionar usuarios y áreas (RF-28) | — | — | — | Sí | Consulta |
   | Consultar bitácora | — | — | — | Sí | Sí |
+  | Crear solicitudes (RF-01..03) | Sí | — | — | — | — |
+  | Consultar mis solicitudes (RF-04) | Sí | — | — | — | — |
 
   Las capacidades de casos (crear solicitudes, verificar, aprobar) y de configuración (matriz de
   riesgo RF-29; formularios, checklists, documentos y plazos RF-30) se agregan a esta tabla en sus

@@ -1,4 +1,6 @@
+using Diligencia.BuildingBlocks.Email;
 using Diligencia.Modules.Identidad.Contracts;
+using Hangfire;
 using Diligencia.Modules.Identidad.Email;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -22,10 +24,16 @@ public class ApiFactory : WebApplicationFactory<Program>
 
     public FakeTimeProvider Clock { get; } = new(DateTimeOffset.UtcNow);
     public FakeEmailSender Emails { get; } = new();
+    public FakeEmailTransport EmailTransport { get; } = new();
+    public FakeBackgroundJobClient Jobs { get; } = new();
+
+    // El test de correlación necesita la cola real de Hangfire.
+    protected virtual bool UseFakeJobs => true;
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("Identidad:BackofficeBaseUrl", "http://test.local");
+        builder.UseSetting("Casos:PortalBaseUrl", "http://portal.test");
         builder.UseSetting("Identidad:AuthRateLimitPerMinute", AuthRateLimitPerMinute.ToString());
         if (ConnectionString is not null) builder.UseSetting("ConnectionStrings:diligencia", ConnectionString);
         foreach (var (surface, scheme) in new[] { (ActorSurface.Backoffice, AuthSchemes.Backoffice), (ActorSurface.Portal, AuthSchemes.Portal) })
@@ -44,6 +52,13 @@ public class ApiFactory : WebApplicationFactory<Program>
             services.AddSingleton<TimeProvider>(Clock);
             services.RemoveAll<IEmailSender>();
             services.AddSingleton<IEmailSender>(Emails);
+            services.RemoveAll<IEmailTransport>();
+            services.AddSingleton<IEmailTransport>(EmailTransport);
+            if (UseFakeJobs)
+            {
+                services.RemoveAll<IBackgroundJobClient>();
+                services.AddSingleton<IBackgroundJobClient>(Jobs);
+            }
         });
     }
 

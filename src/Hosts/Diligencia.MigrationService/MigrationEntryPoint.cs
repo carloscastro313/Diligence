@@ -1,3 +1,5 @@
+using Diligencia.BuildingBlocks.Email;
+using Diligencia.BuildingBlocks.Persistence;
 using Diligencia.Modules.Aprobaciones;
 using Diligencia.Modules.Auditoria;
 using Diligencia.Modules.Casos;
@@ -36,6 +38,8 @@ internal static class MigrationEntryPoint
             .AddDocumentosModule(config)
             .AddAuditoriaModule(config)
             .AddIdentidadModule(config)
+            .AddEmailTransport()
+            .AddDiligenciaHangfire(config)
             .AddSingleton<DatabaseProvisioner>();
 
         using var host = builder.Build();

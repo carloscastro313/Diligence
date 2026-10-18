@@ -11,5 +11,5 @@ export default defineConfig({
     port: Number(process.env['PORT'] ?? 5173),
     proxy: { '/api': { target: api, changeOrigin: true, secure: false } },
   },
-  test: { environment: 'jsdom', globals: true, setupFiles: ['./src/test-setup.ts'] },
+  test: { environment: 'jsdom', globals: true, setupFiles: ['./src/test-setup.ts'], exclude: ['e2e/**', 'node_modules/**'] },
 });

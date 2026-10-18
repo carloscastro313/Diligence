@@ -1,0 +1,188 @@
+openapi: 3.1.0
+info:
+  title: Diligencia — Solicitudes de alta de terceros
+  version: 0.3.0
+  description: |
+    RF-01 a RF-04. Rutas bajo /api/backoffice (esquema JWT Backoffice); el subgrupo /solicitudes
+    exige el rol Solicitante en las tres.
+    Errores: ProblemDetails (application/problem+json) con `correlationId`.
+    401 = sin sesión válida; 403 = sesión sin rol Solicitante (se registra AccessDenied).
+servers:
+  - url: /api/backoffice
+security:
+  - cookieAuth: []
+  - bearerAuth: []
+
+paths:
+  /solicitudes/tercero-existente:
+    get:
+      summary: Aviso de tercero existente por CUIT (RF-02, FR-004/005)
+      parameters:
+        - name: cuit
+          in: query
+          required: true
+          description: Con o sin guiones/espacios; se normaliza a 11 dígitos.
+          schema: { type: string, maxLength: 20 }
+      responses:
+        '200':
+          description: |
+            `existe = false` si no hay tercero con ese CUIT. Nunca incluye hallazgos, puntajes,
+            verificaciones ni comentarios internos.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AvisoTercero' }
+        '400': { $ref: '#/components/responses/ValidationProblem' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /solicitudes:
+    post:
+      summary: Crear solicitud (RF-01, RF-03). Guardar siempre envía; no hay borradores.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CrearSolicitudRequest' }
+      responses:
+        '201':
+          description: |
+            `CasoAbierto`: se creó (o reutilizó) el tercero, se abrió el caso en EsperaTercero y se
+            encoló el envío del enlace.
+            `SumadoACasoAbierto`: el tercero ya tenía un caso abierto; el usuario quedó como
+            interesado, no se abrió otro caso ni se reenvió el enlace (FR-007).
+          headers:
+            Location:
+              schema: { type: string }
+              description: /api/backoffice/solicitudes/{casoId}
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CrearSolicitudResponse' }
+        '400': { $ref: '#/components/responses/ValidationProblem' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: |
+            El tercero está Activo o Bloqueado (no se abre un alta), o el usuario ya sigue el caso
+            abierto. `title` explica el motivo.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+    get:
+      summary: Mis solicitudes (RF-04, FR-012..015). Solo las creadas o seguidas por el usuario.
+      parameters:
+        - name: estado
+          in: query
+          required: false
+          description: Un valor fuera del enum → 400.
+          schema: { $ref: '#/components/schemas/EstadoCaso' }
+        - name: q
+          in: query
+          required: false
+          description: Busca por razón social (contiene) o CUIT (dígitos, empieza con).
+          schema: { type: string, maxLength: 200 }
+      responses:
+        '200':
+          description: Ordenadas por fecha de creación descendente.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/MiSolicitud' }
+        '400': { $ref: '#/components/responses/ValidationProblem' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+components:
+  securitySchemes:
+    cookieAuth: { type: apiKey, in: cookie, name: dlg_bo }
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+
+  responses:
+    Unauthenticated:
+      description: Sin sesión válida.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Forbidden:
+      description: Sesión válida sin rol Solicitante.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    ValidationProblem:
+      description: Errores por campo (FluentValidation). Claves en camelCase del request.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+
+  schemas:
+    TipoTercero: { type: string, enum: [Cliente, Proveedor] }
+    TipoPersona: { type: string, enum: [Humana, Juridica] }
+    EstadoTercero: { type: string, enum: [EnAlta, Activo, Bloqueado, Inactivo] }
+    EstadoCaso:
+      type: string
+      enum: [EsperaTercero, EnVerificacion, EnAprobacion, Aprobado, Rechazado, Abandonado]
+    EntregaEnlace: { type: string, enum: [Pendiente, Reintentando, Enviado, Fallido] }
+
+    CrearSolicitudRequest:
+      type: object
+      required: [tipoTercero, tipoPersona, cuit, razonSocial, contactoNombre, contactoEmail, montoAnualEstimado, motivo]
+      properties:
+        tipoTercero: { $ref: '#/components/schemas/TipoTercero' }
+        tipoPersona: { $ref: '#/components/schemas/TipoPersona' }
+        cuit:
+          type: string
+          maxLength: 20
+          description: 11 dígitos tras normalizar, dígito verificador válido, prefijo según tipoPersona.
+        razonSocial: { type: string, maxLength: 200, description: 'Razón social, o nombre y apellido si es persona humana.' }
+        contactoNombre: { type: string, maxLength: 200 }
+        contactoEmail: { type: string, format: email, maxLength: 254 }
+        contactoTelefono: { type: [string, 'null'], maxLength: 50 }
+        montoAnualEstimado: { type: number, exclusiveMinimum: 0, description: 'Pesos argentinos, 2 decimales.' }
+        motivo: { type: string, maxLength: 1000 }
+
+    CrearSolicitudResponse:
+      type: object
+      required: [casoId, resultado]
+      properties:
+        casoId: { type: string, format: uuid }
+        resultado: { type: string, enum: [CasoAbierto, SumadoACasoAbierto] }
+
+    AvisoTercero:
+      type: object
+      required: [existe]
+      properties:
+        existe: { type: boolean }
+        razonSocial: { type: [string, 'null'] }
+        estadoTercero: { oneOf: [{ $ref: '#/components/schemas/EstadoTercero' }, { type: 'null' }] }
+        etapaCasoAbierto:
+          description: Estado del caso abierto, si lo hay.
+          oneOf: [{ $ref: '#/components/schemas/EstadoCaso' }, { type: 'null' }]
+        yaLoSigue: { type: boolean, description: 'El usuario ya creó o sigue el caso abierto.' }
+        admiteSolicitud:
+          type: boolean
+          description: false si el tercero está Activo o Bloqueado, o si yaLoSigue.
+
+    MiSolicitud:
+      type: object
+      required: [casoId, cuit, razonSocial, tipoTercero, estado, creadaUtc, esOriginal, enlaceNoEntregado]
+      properties:
+        casoId: { type: string, format: uuid }
+        cuit: { type: string }
+        razonSocial: { type: string }
+        tipoTercero: { $ref: '#/components/schemas/TipoTercero' }
+        estado: { $ref: '#/components/schemas/EstadoCaso' }
+        creadaUtc: { type: string, format: date-time, description: 'Fecha de la solicitud del usuario (creación o cuando se sumó), FR-012.' }
+        esOriginal: { type: boolean, description: 'false = el usuario se sumó como interesado.' }
+        fechaEstimada: { type: [string, 'null'], format: date, description: 'Solo casos abiertos (FR-013).' }
+        cerradoUtc: { type: [string, 'null'], format: date-time, description: 'Solo casos en estado final.' }
+        enlaceNoEntregado: { type: boolean, description: 'Entrega del enlace en Fallido (FR-011).' }
+
+    Problem:
+      type: object
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        errors: { type: object, additionalProperties: { type: array, items: { type: string } } }
+        correlationId: { type: string }

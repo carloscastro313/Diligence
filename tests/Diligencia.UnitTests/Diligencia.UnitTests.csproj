@@ -9,6 +9,7 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Modules\Casos\Diligencia.Modules.Casos\Diligencia.Modules.Casos.csproj" />
     <ProjectReference Include="..\..\src\Modules\Auditoria\Diligencia.Modules.Auditoria\Diligencia.Modules.Auditoria.csproj" />
     <ProjectReference Include="..\..\src\Modules\Identidad\Diligencia.Modules.Identidad\Diligencia.Modules.Identidad.csproj" />
     <ProjectReference Include="..\..\src\BuildingBlocks\Diligencia.BuildingBlocks\Diligencia.BuildingBlocks.csproj" />

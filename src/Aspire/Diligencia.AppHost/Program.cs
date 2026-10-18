@@ -59,8 +59,10 @@ var api = builder.AddProject<Projects.Diligencia_Api>("api")
     .WithHttpHealthCheck("/health")
     .WaitForCompletion(migrations);
 
-builder.AddProject<Projects.Diligencia_Worker>("worker")
+var worker = builder.AddProject<Projects.Diligencia_Worker>("worker")
     .WithEnvironment("ConnectionStrings__diligencia", runtimeConnection)
+    .WithEnvironment("Email__Smtp__Host", smtp.Property(EndpointProperty.Host))
+    .WithEnvironment("Email__Smtp__Port", smtp.Property(EndpointProperty.Port))
     .WithHttpHealthCheck("/health")
     .WaitForCompletion(migrations);
 
@@ -76,6 +78,9 @@ var portal = builder.AddViteApp("portal", "../../../apps/portal")
     .WithReference(api)
     .WaitFor(api)
     .WithHttpHealthCheck("/");
+
+// El worker arma el enlace de activación de casos hacia el portal.
+worker.WithEnvironment("Casos__PortalBaseUrl", portal.GetEndpoint("http"));
 
 // Ambos `npm install` escriben el mismo node_modules del workspace; en paralelo chocan (EEXIST al crear el
 // symlink de @diligencia/ui). Se serializan: el instalador del portal espera al del backoffice.

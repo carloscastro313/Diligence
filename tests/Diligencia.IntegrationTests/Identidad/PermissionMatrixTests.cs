@@ -18,6 +18,7 @@ public class PermissionMatrixTests(SqlServerFixture sql) : IdentidadApiTest(sql)
     ];
     private static readonly string[] Everyone = AllRoles;
     private static readonly string[] AdminOnly = [BackofficeRoles.Administrador];
+    private static readonly string[] RequesterOnly = [BackofficeRoles.Solicitante];
     private static readonly string[] AdminOrAuditor = [BackofficeRoles.Administrador, BackofficeRoles.Auditor];
 
     // Rutas anónimas: no entran en la matriz (las cubre la lista cerrada de EndpointSurfaceTests).
@@ -41,6 +42,9 @@ public class PermissionMatrixTests(SqlServerFixture sql) : IdentidadApiTest(sql)
         ["POST /areas/{id:guid}/deactivate"] = AdminOnly,
         ["POST /areas/{id:guid}/reactivate"] = AdminOnly,
         ["POST /diagnostics/jobs"] = AdminOnly,
+        ["POST /solicitudes/"] = RequesterOnly,
+        ["GET /solicitudes/tercero-existente"] = RequesterOnly,
+        ["GET /solicitudes/"] = RequesterOnly,
     };
 
     public static TheoryData<string, string> Cases()

@@ -30,6 +30,39 @@ jobs:
       - run: npm test
       - run: npm run build
 
+  e2e:
+    runs-on: ubuntu-latest
+    env:
+      E2E_REQUESTER_EMAIL: solicitante@diligencia.local
+      E2E_REQUESTER_PASSWORD: E2e-Passw0rd-12345
+      ASPIRE_ALLOW_UNSECURED_TRANSPORT: 'true'
+      ASPNETCORE_URLS: http://localhost:18888
+      ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL: http://localhost:18889
+      Authentication__Schemes__Portal__ValidIssuer: e2e-portal
+      Authentication__Schemes__Portal__ValidAudiences__0: e2e-portal
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      # Como el smoke test del AppHost: la API exige la clave de firma del portal y la base es efímera.
+      - name: Arrancar AppHost
+        run: |
+          export Authentication__Schemes__Portal__SigningKeys__0__Value=$(openssl rand -base64 48)
+          nohup dotnet run --project src/Aspire/Diligencia.AppHost -- --Diligencia:EphemeralDatabase=true > apphost.log 2>&1 &
+      - name: Esperar recursos (exporta BASE_URL y MAILPIT_URL)
+        run: scripts/e2e-discover.sh
+      - run: node scripts/e2e-seed.mjs
+      - run: npm run e2e -w apps/backoffice
+      - if: failure()
+        run: tail -n 200 apphost.log
+
   performance:
     runs-on: ubuntu-latest
     steps:

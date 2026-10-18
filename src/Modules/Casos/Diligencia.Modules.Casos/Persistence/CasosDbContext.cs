@@ -6,6 +6,14 @@ internal sealed class CasosDbContext(DbContextOptions<CasosDbContext> options) :
 {
     public const string Schema = "casos";
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+    public DbSet<Caso> Casos => Set<Caso>();
+    public DbSet<Solicitud> Solicitudes => Set<Solicitud>();
+    public DbSet<EnlacePortal> EnlacesPortal => Set<EnlacePortal>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
         modelBuilder.HasDefaultSchema(Schema);
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(CasosDbContext).Assembly,
+            t => t.Namespace == typeof(CasosDbContext).Namespace);
+    }
 }

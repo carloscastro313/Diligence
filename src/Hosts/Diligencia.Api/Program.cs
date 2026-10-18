@@ -1,4 +1,5 @@
 using Diligencia.Api.Diagnostics;
+using Diligencia.BuildingBlocks.Email;
 using Diligencia.BuildingBlocks.Correlation;
 using Diligencia.BuildingBlocks.Http;
 using Diligencia.BuildingBlocks.Persistence;
@@ -25,6 +26,7 @@ builder.Services
     .AddAuditoriaModule(config)
     .AddIdentidadModule(config)
     .AddIdentidadAuthentication(config)
+    .AddEmailTransport()
     .AddDiligenciaHangfire(config);
 
 // Solo método, ruta, status y duración: nunca headers, query string ni cuerpos (FR-014).

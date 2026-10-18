@@ -16,6 +16,8 @@ public class CorrelationEndToEndTests(SqlServerFixture sql)
 {
     private sealed class ApiWithLogs(string connectionString) : DbApiFactory(connectionString)
     {
+        protected override bool UseFakeJobs => false;
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             base.ConfigureWebHost(builder);

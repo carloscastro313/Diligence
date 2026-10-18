@@ -1,4 +1,5 @@
 using Hangfire;
+using Diligencia.BuildingBlocks.Email;
 using Diligencia.BuildingBlocks.Diagnostics;
 using Diligencia.BuildingBlocks.Persistence;
 using Diligencia.Worker;
@@ -22,6 +23,7 @@ builder.Services
     .AddDocumentosModule(config)
     .AddAuditoriaModule(config)
     .AddIdentidadModule(config)
+    .AddEmailTransport()
     .AddDiligenciaHangfire(config);
 
 builder.Services.AddScoped<IDiagnosticJob, DiagnosticJob>();

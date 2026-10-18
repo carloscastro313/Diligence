@@ -37,6 +37,11 @@ export function Layout() {
               </Link>
             </>
           )}
+          {hasRole(session, Roles.Solicitante) && (
+            <Link to="/solicitudes" style={linkStyle}>
+              Mis solicitudes
+            </Link>
+          )}
           <Box sx={{ flexGrow: 1 }} />
           <Typography variant="body2" sx={{ mr: 2 }}>
             {session?.name}

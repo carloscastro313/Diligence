@@ -30,7 +30,7 @@ public class MigrationWithoutBootstrapTests(SqlServerFixture sql)
             "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '__EFMigrationsHistory'"));
 
         var runtime = sql.For(app, pwd, db);
-        Assert.Equal(1, await SqlServerFixture.ScalarAsync<int>(runtime, "SELECT COUNT(*) FROM terceros.__EFMigrationsHistory"));
+        Assert.Equal(2, await SqlServerFixture.ScalarAsync<int>(runtime, "SELECT COUNT(*) FROM terceros.__EFMigrationsHistory"));
         var ex = await Assert.ThrowsAsync<SqlException>(() =>
             SqlServerFixture.ExecuteAsync(runtime, "DELETE FROM terceros.__EFMigrationsHistory"));
         Assert.Equal(229, ex.Number);

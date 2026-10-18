@@ -18,6 +18,8 @@ public abstract class IdentidadApiTest(SqlServerFixture sql) : IAsyncLifetime
     protected HttpClient Client { get; private set; } = null!;
     protected FakeTimeProvider Clock => Factory.Clock;
     protected FakeEmailSender Emails => Factory.Emails;
+    protected FakeEmailTransport EmailTransport => Factory.EmailTransport;
+    protected FakeBackgroundJobClient Jobs => Factory.Jobs;
 
     protected virtual DbApiFactory CreateFactory() => new(RuntimeConnection);
 
