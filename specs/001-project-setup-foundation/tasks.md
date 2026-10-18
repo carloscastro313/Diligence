@@ -212,7 +212,7 @@ description: "Tasks: Setup base del proyecto (estructura, base de datos, logs y 
 - [X] T096 [P] Ejecutar el [quickstart.md](quickstart.md) completo (pasos 1–9) en una máquina/WSL limpia y corregir las diferencias en los documentos o el código
 - [X] T097 [P] Verificar manualmente las fronteras (quickstart paso 7): una violación en `apps/portal` rompe `npm run lint` y una referencia entre módulos rompe `dotnet test` de arquitectura
 - [X] T098 [P] Medir el tiempo de arranque desde el clon (SC-001 < 15 min sin descarga de imágenes) y anotarlo en `README.md`
-- [ ] T099 Revisar que ningún secreto, contraseña ni cadena de conexión esté versionado (`git grep`) y que el pipeline `.github/workflows/ci.yml` pase completo, incluidas las cuatro imágenes Docker y el job de rendimiento
+- [X] T099 Revisar que ningún secreto, contraseña ni cadena de conexión esté versionado (`git grep`) y que el pipeline `.github/workflows/ci.yml` pase completo, incluidas las cuatro imágenes Docker y el job de rendimiento
 
 ---
 
