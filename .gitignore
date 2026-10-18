@@ -1,0 +1,13 @@
+bin/
+obj/
+node_modules/
+dist/
+coverage/
+.vs/
+*.user
+*.suo
+*.log
+.env
+.env.*
+appsettings.*.local.json
+secrets.json

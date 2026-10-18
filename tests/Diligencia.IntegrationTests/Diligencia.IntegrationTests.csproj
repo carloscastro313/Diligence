@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><IsPackable>false</IsPackable></PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Testcontainers.MsSql" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Aspire.Hosting.Testing" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.Testing" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\BuildingBlocks\Diligencia.BuildingBlocks\Diligencia.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\..\src\Hosts\Diligencia.Api\Diligencia.Api.csproj" />
+    <ProjectReference Include="..\..\src\Hosts\Diligencia.Worker\Diligencia.Worker.csproj" Aliases="worker" />
+    <ProjectReference Include="..\..\src\Hosts\Diligencia.MigrationService\Diligencia.MigrationService.csproj" />
+    <ProjectReference Include="..\..\src\Aspire\Diligencia.AppHost\Diligencia.AppHost.csproj" Aliases="apphost" />
+    <ProjectReference Include="..\..\src\Modules\Identidad\Diligencia.Modules.Identidad.Contracts\Diligencia.Modules.Identidad.Contracts.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Diligencia.Modules.Terceros.Contracts\Diligencia.Modules.Terceros.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Diligencia.BuildingBlocks\Diligencia.BuildingBlocks.csproj" />
+  </ItemGroup>
+</Project>

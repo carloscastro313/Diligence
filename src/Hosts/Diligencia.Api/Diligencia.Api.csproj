@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <UserSecretsId>diligencia-api</UserSecretsId>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Modules\Terceros\Diligencia.Modules.Terceros\Diligencia.Modules.Terceros.csproj" />
+    <ProjectReference Include="..\..\Modules\Casos\Diligencia.Modules.Casos\Diligencia.Modules.Casos.csproj" />
+    <ProjectReference Include="..\..\Modules\Riesgo\Diligencia.Modules.Riesgo\Diligencia.Modules.Riesgo.csproj" />
+    <ProjectReference Include="..\..\Modules\Aprobaciones\Diligencia.Modules.Aprobaciones\Diligencia.Modules.Aprobaciones.csproj" />
+    <ProjectReference Include="..\..\Modules\Documentos\Diligencia.Modules.Documentos\Diligencia.Modules.Documentos.csproj" />
+    <ProjectReference Include="..\..\Modules\Auditoria\Diligencia.Modules.Auditoria\Diligencia.Modules.Auditoria.csproj" />
+    <ProjectReference Include="..\..\Modules\Identidad\Diligencia.Modules.Identidad\Diligencia.Modules.Identidad.csproj" />
+    <ProjectReference Include="..\..\Modules\Identidad\Diligencia.Modules.Identidad.Contracts\Diligencia.Modules.Identidad.Contracts.csproj" />
+    <ProjectReference Include="..\..\BuildingBlocks\Diligencia.BuildingBlocks\Diligencia.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\..\Aspire\Diligencia.ServiceDefaults\Diligencia.ServiceDefaults.csproj" />
+  </ItemGroup>
+</Project>

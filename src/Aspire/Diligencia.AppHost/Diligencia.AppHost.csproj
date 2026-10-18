@@ -1,0 +1,17 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.6.1">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <UserSecretsId>diligencia-apphost</UserSecretsId>
+    <NoWarn>$(NoWarn);ASPIRE010</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.AppHost" />
+    <PackageReference Include="Aspire.Hosting.JavaScript" />
+    <PackageReference Include="Aspire.Hosting.SqlServer" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Hosts/Diligencia.Api/Diligencia.Api.csproj" />
+    <ProjectReference Include="../../Hosts/Diligencia.Worker/Diligencia.Worker.csproj" />
+    <ProjectReference Include="../../Hosts/Diligencia.MigrationService/Diligencia.MigrationService.csproj" />
+  </ItemGroup>
+</Project>

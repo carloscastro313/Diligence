@@ -1,0 +1,49 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet build Diligencia.slnx --configuration Release
+      - run: dotnet test --solution Diligencia.slnx --configuration Release --no-build --filter-not-trait "Category=Performance"
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  performance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet test --project tests/Diligencia.IntegrationTests --configuration Release --filter-trait "Category=Performance"
+
+  images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f src/Hosts/Diligencia.Api/Dockerfile .
+      - run: docker build -f src/Hosts/Diligencia.Worker/Dockerfile .
+      - run: docker build -f apps/backoffice/Dockerfile .
+      - run: docker build -f apps/portal/Dockerfile .

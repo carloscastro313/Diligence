@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Diligencia.Modules.Identidad.Contracts\Diligencia.Modules.Identidad.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Diligencia.BuildingBlocks\Diligencia.BuildingBlocks.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,52 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Aspire/">
+    <Project Path="src/Aspire/Diligencia.AppHost/Diligencia.AppHost.csproj" />
+    <Project Path="src/Aspire/Diligencia.ServiceDefaults/Diligencia.ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/src/BuildingBlocks/">
+    <Project Path="src/BuildingBlocks/Diligencia.BuildingBlocks/Diligencia.BuildingBlocks.csproj" />
+  </Folder>
+  <Folder Name="/src/Hosts/">
+    <Project Path="src/Hosts/Diligencia.Api/Diligencia.Api.csproj" />
+    <Project Path="src/Hosts/Diligencia.MigrationService/Diligencia.MigrationService.csproj" />
+    <Project Path="src/Hosts/Diligencia.Worker/Diligencia.Worker.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/" />
+  <Folder Name="/src/Modules/Aprobaciones/">
+    <Project Path="src/Modules/Aprobaciones/Diligencia.Modules.Aprobaciones.Contracts/Diligencia.Modules.Aprobaciones.Contracts.csproj" />
+    <Project Path="src/Modules/Aprobaciones/Diligencia.Modules.Aprobaciones/Diligencia.Modules.Aprobaciones.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Auditoria/">
+    <Project Path="src/Modules/Auditoria/Diligencia.Modules.Auditoria.Contracts/Diligencia.Modules.Auditoria.Contracts.csproj" />
+    <Project Path="src/Modules/Auditoria/Diligencia.Modules.Auditoria/Diligencia.Modules.Auditoria.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Casos/">
+    <Project Path="src/Modules/Casos/Diligencia.Modules.Casos.Contracts/Diligencia.Modules.Casos.Contracts.csproj" />
+    <Project Path="src/Modules/Casos/Diligencia.Modules.Casos/Diligencia.Modules.Casos.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Documentos/">
+    <Project Path="src/Modules/Documentos/Diligencia.Modules.Documentos.Contracts/Diligencia.Modules.Documentos.Contracts.csproj" />
+    <Project Path="src/Modules/Documentos/Diligencia.Modules.Documentos/Diligencia.Modules.Documentos.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Identidad/">
+    <Project Path="src/Modules/Identidad/Diligencia.Modules.Identidad.Contracts/Diligencia.Modules.Identidad.Contracts.csproj" />
+    <Project Path="src/Modules/Identidad/Diligencia.Modules.Identidad/Diligencia.Modules.Identidad.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Riesgo/">
+    <Project Path="src/Modules/Riesgo/Diligencia.Modules.Riesgo.Contracts/Diligencia.Modules.Riesgo.Contracts.csproj" />
+    <Project Path="src/Modules/Riesgo/Diligencia.Modules.Riesgo/Diligencia.Modules.Riesgo.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Terceros/">
+    <Project Path="src/Modules/Terceros/Diligencia.Modules.Terceros.Contracts/Diligencia.Modules.Terceros.Contracts.csproj" />
+    <Project Path="src/Modules/Terceros/Diligencia.Modules.Terceros/Diligencia.Modules.Terceros.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Diligencia.ArchitectureTests/Diligencia.ArchitectureTests.csproj" />
+    <Project Path="tests/Diligencia.IntegrationTests/Diligencia.IntegrationTests.csproj" />
+    <Project Path="tests/Diligencia.UnitTests/Diligencia.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/tests/Fixtures/">
+    <Project Path="tests/Fixtures/Diligencia.ArchitectureTests.Violations/Diligencia.ArchitectureTests.Violations.csproj" />
+  </Folder>
+</Solution>

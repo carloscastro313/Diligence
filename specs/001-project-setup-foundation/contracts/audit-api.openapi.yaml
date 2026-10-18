@@ -1,0 +1,224 @@
+openapi: 3.1.0
+info:
+  title: Diligencia Service — API base (feature 001)
+  version: 0.1.0
+  description: >
+    Endpoints HTTP que entrega la feature 001. Todo endpoint de negocio vive bajo
+    /api/backoffice o /api/portal con su propio esquema JWT; un token de un grupo es
+    rechazado (401) en el otro. Todas las respuestas llevan el header X-Correlation-Id.
+servers:
+  - url: http://localhost
+tags:
+  - name: Auditoria
+  - name: Diagnostico
+  - name: Salud
+
+paths:
+  /api/backoffice/audit/events:
+    get:
+      tags: [Auditoria]
+      summary: Consultar la bitácora de auditoría
+      description: >
+        Solo roles Auditor o Administrador del esquema Backoffice (policy AuditReader).
+        Orden cronológico ascendente (occurredAtUtc, id). Cada consulta queda registrada como
+        evento SensitiveDataViewed (FR-022).
+      security:
+        - backoffice: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - name: entityType
+          in: query
+          schema: { type: string, maxLength: 128 }
+        - name: entityId
+          in: query
+          description: Requiere entityType.
+          schema: { type: string, maxLength: 128 }
+        - name: actorId
+          in: query
+          schema: { type: string, maxLength: 200 }
+        - name: fromUtc
+          in: query
+          description: Inclusivo. ISO 8601 en UTC.
+          schema: { type: string, format: date-time }
+        - name: toUtc
+          in: query
+          description: Exclusivo. Debe ser mayor que fromUtc.
+          schema: { type: string, format: date-time }
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: pageSize
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+      responses:
+        '200':
+          description: Página de eventos.
+          headers:
+            X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuditEventPage' }
+        '400': { $ref: '#/components/responses/ValidationProblem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '500': { $ref: '#/components/responses/Problem' }
+
+  /api/backoffice/diagnostics/jobs:
+    post:
+      tags: [Diagnostico]
+      summary: Encolar un job de diagnóstico en el worker
+      description: >
+        Solo existe si Diagnostics:Enabled=true (Development y tests). Rol
+        Administrador. El job hereda el X-Correlation-Id de la solicitud.
+      security:
+        - backoffice: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+      responses:
+        '202':
+          description: Job encolado.
+          headers:
+            X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [jobId]
+                properties:
+                  jobId: { type: string }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+
+  /health:
+    get:
+      tags: [Salud]
+      summary: Estado del proceso y de la base de datos (API y worker)
+      security: []
+      responses:
+        '200':
+          description: Todo sano.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HealthReport' }
+        '503':
+          description: Algún chequeo no sano (p. ej. base caída).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HealthReport' }
+
+  /alive:
+    get:
+      tags: [Salud]
+      summary: Liveness del proceso (sin dependencias externas)
+      security: []
+      responses:
+        '200':
+          description: Proceso vivo.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HealthReport' }
+
+components:
+  securitySchemes:
+    backoffice:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Esquema "Backoffice". Emisor/audiencia/clave propios. Roles en el claim "role".
+    portal:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Esquema "Portal". Emisor/audiencia/clave propios. Sin endpoints en esta feature.
+
+  parameters:
+    CorrelationIdHeader:
+      name: X-Correlation-Id
+      in: header
+      required: false
+      description: Se reutiliza si cumple ^[A-Za-z0-9._:-]{1,64}$; si no, se genera uno nuevo.
+      schema: { type: string, pattern: '^[A-Za-z0-9._:-]{1,64}$' }
+
+  headers:
+    CorrelationId:
+      description: Identificador de correlación de la solicitud.
+      schema: { type: string }
+
+  responses:
+    Problem:
+      description: Error con formato ProblemDetails (RFC 9457); sin trazas internas.
+      headers:
+        X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+    ValidationProblem:
+      description: Error de validación (FluentValidation).
+      headers:
+        X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ValidationProblemDetails' }
+
+  schemas:
+    AuditEvent:
+      type: object
+      required: [id, occurredAtUtc, actorId, surface, action, entityType, entityId, correlationId]
+      properties:
+        id: { type: integer, format: int64 }
+        occurredAtUtc: { type: string, format: date-time }
+        actorId: { type: string, examples: ['user-123', 'system:Diligencia.Worker'] }
+        surface: { type: string, enum: [Backoffice, Portal, System] }
+        action: { type: string, enum: [Created, Updated, SensitiveDataViewed, Downloaded, Decision] }
+        entityType: { type: string }
+        entityId: { type: string }
+        oldValues:
+          type: [object, 'null']
+          additionalProperties: { type: [string, 'null'] }
+          description: Solo campos cambiados; sensibles como "***".
+        newValues:
+          type: [object, 'null']
+          additionalProperties: { type: [string, 'null'] }
+        correlationId: { type: string }
+
+    AuditEventPage:
+      type: object
+      required: [items, page, pageSize, hasNextPage]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/AuditEvent' }
+        page: { type: integer }
+        pageSize: { type: integer }
+        hasNextPage: { type: boolean }
+
+    HealthReport:
+      type: object
+      required: [status, checks]
+      properties:
+        status: { type: string, enum: [Healthy, Degraded, Unhealthy] }
+        checks:
+          type: object
+          description: Un estado por chequeo; sin descripciones ni excepciones.
+          additionalProperties: { type: string, enum: [Healthy, Degraded, Unhealthy] }
+          examples:
+            - { self: Healthy, database: Unhealthy }
+
+    ProblemDetails:
+      type: object
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        correlationId: { type: string }
+
+    ValidationProblemDetails:
+      allOf:
+        - $ref: '#/components/schemas/ProblemDetails'
+        - type: object
+          properties:
+            errors:
+              type: object
+              additionalProperties:
+                type: array
+                items: { type: string }
