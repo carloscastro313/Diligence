@@ -9,12 +9,14 @@ public class EndpointSurfaceTests(ApiFactory factory) : IClassFixture<ApiFactory
 {
     private static readonly string[] Open = ["/health", "/alive"];
 
-    // Lista cerrada de endpoints anónimos (Principio V): solo la autenticación del backoffice.
+    // Lista cerrada de endpoints anónimos (Principio V): la autenticación del backoffice y el ingreso al portal.
     private static readonly string[] Anonymous =
     [
         "/api/backoffice/auth/login",
         "/api/backoffice/auth/password/forgot",
         "/api/backoffice/auth/password/reset",
+        "/api/portal/acceso/codigo",
+        "/api/portal/acceso",
     ];
 
     [Fact]

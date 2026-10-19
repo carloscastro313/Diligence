@@ -20,6 +20,16 @@ var backofficeSigningKey = builder.AddParameter(
     secret: true,
     persist: true);
 
+// Clave HMAC de las sesiones del portal del tercero (mismo formato) y clave de cifrado de los documentos subidos.
+IResourceBuilder<ParameterResource> Secret64(string name) => builder.AddParameter(
+    name,
+    new GenerateParameterDefault { MinLength = 64, Lower = true, Upper = true, Numeric = true, Special = false },
+    secret: true,
+    persist: true);
+
+var portalSigningKey = Secret64("portal-signing-key");
+var documentosEncryptionKey = Secret64("documentos-encryption-key");
+
 // Buzón de pruebas para los correos de invitación y recuperación (UI web en el puerto 8025).
 var mailpit = builder.AddContainer("mailpit", "axllent/mailpit")
     .WithEndpoint(targetPort: 1025, name: "smtp")
@@ -54,6 +64,8 @@ var migrations = builder.AddProject<Projects.Diligencia_MigrationService>("migra
 var api = builder.AddProject<Projects.Diligencia_Api>("api")
     .WithEnvironment("ConnectionStrings__diligencia", runtimeConnection)
     .WithEnvironment("Authentication__Schemes__Backoffice__SigningKeys__0__Value", backofficeSigningKey)
+    .WithEnvironment("Authentication__Schemes__Portal__SigningKeys__0__Value", portalSigningKey)
+    .WithEnvironment("Documentos__EncryptionKey", documentosEncryptionKey)
     .WithEnvironment("Email__Smtp__Host", smtp.Property(EndpointProperty.Host))
     .WithEnvironment("Email__Smtp__Port", smtp.Property(EndpointProperty.Port))
     .WithHttpHealthCheck("/health")

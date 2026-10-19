@@ -24,8 +24,23 @@ public static class TestUsers
         _ => throw new ArgumentOutOfRangeException(nameof(surface)),
     };
 
-    public static string CreatePortalToken(string sub) =>
-        Sign(ActorSurface.Portal, [new Claim("sub", sub)], DateTime.UtcNow.AddHours(1));
+    /// <summary>Inserta una sesión de portal real (el esquema Portal la exige en la base) y devuelve su token.</summary>
+    public static async Task<string> CreatePortalTokenAsync(
+        string connectionString, TimeProvider clock, Guid? casoId = null, Guid? terceroId = null)
+    {
+        var now = clock.GetUtcNow().UtcDateTime;
+        await using var db = new IdentidadDbContext(
+            new DbContextOptionsBuilder<IdentidadDbContext>().UseSqlServer(connectionString).Options);
+        var session = new PortalSession
+        {
+            CasoId = casoId ?? Guid.NewGuid(), TerceroId = terceroId ?? Guid.NewGuid(),
+            CreatedAtUtc = now, LastActivityUtc = now, ExpiresAtUtc = now.AddHours(8),
+        };
+        db.PortalSessions.Add(session);
+        await db.SaveChangesAsync();
+        return Sign(ActorSurface.Portal,
+            [new Claim("sub", $"tercero:{session.TerceroId}"), new Claim("sid", session.Id.ToString())], session.ExpiresAtUtc);
+    }
 
     public static string Sign(ActorSurface surface, IEnumerable<Claim> claims, DateTime expiresUtc)
     {

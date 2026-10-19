@@ -80,11 +80,50 @@ namespace Diligencia.Modules.Casos.Persistence.Migrations
                     b.ToTable("Casos", "casos");
                 });
 
+            modelBuilder.Entity("Diligencia.Modules.Casos.Persistence.CodigoIngreso", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("CodigoHash")
+                        .IsRequired()
+                        .HasColumnType("binary(32)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("EnlaceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<int>("IntentosFallidos")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("VenceUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EnlaceId", "CreatedAtUtc");
+
+                    b.ToTable("CodigosIngreso", "casos");
+                });
+
             modelBuilder.Entity("Diligencia.Modules.Casos.Persistence.EnlacePortal", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("BloqueadoHastaUtc")
+                        .HasColumnType("datetime2");
 
                     b.Property<Guid>("CasoId")
                         .HasColumnType("uniqueidentifier");
@@ -100,6 +139,11 @@ namespace Diligencia.Modules.Casos.Persistence.Migrations
                     b.Property<string>("Entrega")
                         .IsRequired()
                         .HasColumnType("nvarchar(32)");
+
+                    b.Property<int>("FallidosConsecutivos")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<int>("Intentos")
                         .HasColumnType("int");
@@ -126,6 +170,46 @@ namespace Diligencia.Modules.Casos.Persistence.Migrations
                         .HasFilter("[TokenHash] IS NOT NULL");
 
                     b.ToTable("EnlacesPortal", "casos");
+                });
+
+            modelBuilder.Entity("Diligencia.Modules.Casos.Persistence.FormularioTercero", b =>
+                {
+                    b.Property<Guid>("CasoId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Datos")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EnviadoPor")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("EnviadoUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<DateTime>("GuardadoUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<byte[]>("Version")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("CasoId");
+
+                    b.ToTable("FormulariosTercero", "casos");
                 });
 
             modelBuilder.Entity("Diligencia.Modules.Casos.Persistence.Solicitud", b =>
@@ -183,11 +267,29 @@ namespace Diligencia.Modules.Casos.Persistence.Migrations
                     b.ToTable("Solicitudes", "casos");
                 });
 
+            modelBuilder.Entity("Diligencia.Modules.Casos.Persistence.CodigoIngreso", b =>
+                {
+                    b.HasOne("Diligencia.Modules.Casos.Persistence.EnlacePortal", null)
+                        .WithMany()
+                        .HasForeignKey("EnlaceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Diligencia.Modules.Casos.Persistence.EnlacePortal", b =>
                 {
                     b.HasOne("Diligencia.Modules.Casos.Persistence.Caso", null)
                         .WithMany()
                         .HasForeignKey("CasoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Diligencia.Modules.Casos.Persistence.FormularioTercero", b =>
+                {
+                    b.HasOne("Diligencia.Modules.Casos.Persistence.Caso", null)
+                        .WithOne()
+                        .HasForeignKey("Diligencia.Modules.Casos.Persistence.FormularioTercero", "CasoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

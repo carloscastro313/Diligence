@@ -45,6 +45,8 @@ public class PermissionMatrixTests(SqlServerFixture sql) : IdentidadApiTest(sql)
         ["POST /solicitudes/"] = RequesterOnly,
         ["GET /solicitudes/tercero-existente"] = RequesterOnly,
         ["GET /solicitudes/"] = RequesterOnly,
+        ["GET /documentos/configuracion"] = AdminOnly,
+        ["PUT /documentos/configuracion"] = AdminOnly,
     };
 
     public static TheoryData<string, string> Cases()

@@ -5,14 +5,19 @@ namespace Diligencia.Modules.Identidad.Authentication;
 internal static class SessionCookie
 {
     public const string Name = "dlg_bo";
+    public const string PortalName = "dlg_pt";
 
     // SameSite=Strict cubre CSRF mientras SPA y API vivan en el mismo sitio (R2).
-    public static CookieOptions Options(DateTime? expiresUtc) => new()
+    public static CookieOptions Options(DateTime? expiresUtc) => Create("/api/backoffice", expiresUtc);
+
+    public static CookieOptions PortalOptions(DateTime? expiresUtc) => Create("/api/portal", expiresUtc);
+
+    private static CookieOptions Create(string path, DateTime? expiresUtc) => new()
     {
         HttpOnly = true,
         Secure = true,
         SameSite = SameSiteMode.Strict,
-        Path = "/api/backoffice",
+        Path = path,
         Expires = expiresUtc is null ? null : new DateTimeOffset(DateTime.SpecifyKind(expiresUtc.Value, DateTimeKind.Utc)),
     };
 }

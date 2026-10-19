@@ -43,6 +43,18 @@ internal sealed class Session
     public DateTime? RevokedAtUtc { get; set; }
 }
 
+// Sesión del tercero en el portal: limitada a un caso. Sin FK: caso y tercero viven en otros schemas.
+internal sealed class PortalSession
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CasoId { get; set; }
+    public Guid TerceroId { get; set; }
+    public DateTime CreatedAtUtc { get; set; }
+    public DateTime ExpiresAtUtc { get; set; }
+    public DateTime LastActivityUtc { get; set; }
+    public DateTime? RevokedAtUtc { get; set; }
+}
+
 internal static class PasswordPurpose
 {
     public const string Invitation = "Invitation";

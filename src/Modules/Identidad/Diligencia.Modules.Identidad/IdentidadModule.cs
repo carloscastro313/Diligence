@@ -63,6 +63,8 @@ public static class IdentidadModule
         services.AddSingleton<TokenIssuer>(); // lee la configuración al emitir: seguro en hosts sin JWT
         services.AddFeatureServices();
         services.AddScoped<IActorContext, HttpActorContext>();
+        services.AddScoped<IPortalSignIn, PortalSignIn>();
+        services.AddScoped<IPortalActor, HttpPortalActor>();
         return services;
     }
 

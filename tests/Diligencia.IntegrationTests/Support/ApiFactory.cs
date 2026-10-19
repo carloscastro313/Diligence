@@ -22,6 +22,9 @@ public class ApiFactory : WebApplicationFactory<Program>
     // En TestServer la IP remota es nula y todos los tests comparten la partición del limitador (R12).
     protected virtual int AuthRateLimitPerMinute => 100_000;
 
+    // Idem para los endpoints anónimos del portal (política portal-acceso).
+    protected virtual int AccesoRateLimitPerMinute => 100_000;
+
     public FakeTimeProvider Clock { get; } = new(DateTimeOffset.UtcNow);
     public FakeEmailSender Emails { get; } = new();
     public FakeEmailTransport EmailTransport { get; } = new();
@@ -35,6 +38,8 @@ public class ApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Identidad:BackofficeBaseUrl", "http://test.local");
         builder.UseSetting("Casos:PortalBaseUrl", "http://portal.test");
         builder.UseSetting("Identidad:AuthRateLimitPerMinute", AuthRateLimitPerMinute.ToString());
+        builder.UseSetting("Casos:AccesoRateLimitPerMinute", AccesoRateLimitPerMinute.ToString());
+        builder.UseSetting("Documentos:EncryptionKey", Convert.ToBase64String(Enumerable.Repeat((byte)0xD0, 32).ToArray()));
         if (ConnectionString is not null) builder.UseSetting("ConnectionStrings:diligencia", ConnectionString);
         foreach (var (surface, scheme) in new[] { (ActorSurface.Backoffice, AuthSchemes.Backoffice), (ActorSurface.Portal, AuthSchemes.Portal) })
         {

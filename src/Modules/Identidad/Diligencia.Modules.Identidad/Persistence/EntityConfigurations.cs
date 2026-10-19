@@ -66,6 +66,21 @@ internal sealed class SessionConfiguration : IEntityTypeConfiguration<Session>
     }
 }
 
+internal sealed class PortalSessionConfiguration : IEntityTypeConfiguration<PortalSession>
+{
+    // shortcut: no hay limpieza de PortalSessions vencidas (igual que Sessions); agregar un job en el worker al crecer.
+    public void Configure(EntityTypeBuilder<PortalSession> b)
+    {
+        b.ToTable("PortalSessions");
+        b.HasKey(s => s.Id);
+        b.HasIndex(s => s.CasoId);
+        b.Property(s => s.CreatedAtUtc).HasColumnType("datetime2(7)");
+        b.Property(s => s.ExpiresAtUtc).HasColumnType("datetime2(7)");
+        b.Property(s => s.LastActivityUtc).HasColumnType("datetime2(7)");
+        b.Property(s => s.RevokedAtUtc).HasColumnType("datetime2(7)");
+    }
+}
+
 internal sealed class PasswordTokenConfiguration : IEntityTypeConfiguration<PasswordToken>
 {
     public void Configure(EntityTypeBuilder<PasswordToken> b)

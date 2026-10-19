@@ -115,7 +115,7 @@ public class QueryEventsTests(SqlServerFixture sql) : IAsyncLifetime
     {
         using (var r = await Query("", await Token(BackofficeRoles.Administrador))) Assert.Equal(HttpStatusCode.OK, r.StatusCode);
         using (var r = await Query("", await Token(BackofficeRoles.Analista))) Assert.Equal(HttpStatusCode.Forbidden, r.StatusCode);
-        using (var r = await Query("", TestUsers.CreatePortalToken("t"))) Assert.Equal(HttpStatusCode.Unauthorized, r.StatusCode);
+        using (var r = await Query("", await TestUsers.CreatePortalTokenAsync(sql.RuntimeConnectionString, _factory.Clock))) Assert.Equal(HttpStatusCode.Unauthorized, r.StatusCode);
         using (var r = await Query("")) Assert.Equal(HttpStatusCode.Unauthorized, r.StatusCode);
     }
 

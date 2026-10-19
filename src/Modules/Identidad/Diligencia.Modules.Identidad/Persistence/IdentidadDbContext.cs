@@ -11,6 +11,7 @@ internal sealed class IdentidadDbContext(DbContextOptions<IdentidadDbContext> op
     public DbSet<User> Users => Set<User>();
     public DbSet<UserRole> UserRoles => Set<UserRole>();
     public DbSet<Session> Sessions => Set<Session>();
+    public DbSet<PortalSession> PortalSessions => Set<PortalSession>();
     public DbSet<PasswordToken> PasswordTokens => Set<PasswordToken>();
 
     // Las fechas se guardan en UTC: devolverlas con Kind=Utc para que se serialicen con "Z".

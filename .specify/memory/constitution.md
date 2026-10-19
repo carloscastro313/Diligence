@@ -1,4 +1,16 @@
 <!--
+Sync Impact Report (1.1.0, 2026-10-18)
+- Version change: 1.0.1 → 1.1.0 (MINOR: se elimina una restricción de la guía del Principio VI)
+- Principio modificado: VI. Worker en proceso aparte — se elimina la viñeta "La API solo encola
+  trabajo y responde; MUST NOT ejecutar inline una tarea cuyo costo dependa del tamaño de un
+  documento". Motivo: feature 004 (portal del tercero) recibe, hashea, cifra y guarda archivos de
+  hasta 50 MB dentro de la request (E/S acotada, sin dejar archivos en claro); la restricción lo
+  impedía por su letra. El procesamiento pesado o lento (OCR, extracción, expedientes PDF,
+  revisiones periódicas) sigue yendo al worker por la primera viñeta del principio.
+- Impacto: ninguno sobre código existente; el plan de la 004 pasa a cumplir el principio sin
+  excepción.
+- Templates: sin cambios.
+
 Sync Impact Report (1.0.1, 2026-10-18)
 - Version change: 1.0.0 → 1.0.1 (PATCH: aclaración)
 - Principio modificado: V. Dos superficies de API — se aclara que los endpoints de ingreso y
@@ -112,8 +124,6 @@ un error de policy exponga el backoffice.
 - El procesamiento pesado o lento (OCR, extracción de texto con PdfPig, lectura de documentos
   Office con DocumentFormat.OpenXml, generación de expedientes PDF con QuestPDF, revisiones
   periódicas y vencimientos de plazos) corre en un proceso worker separado con Hangfire.
-- La API solo encola trabajo y responde; MUST NOT ejecutar inline una tarea cuyo costo dependa del
-  tamaño de un documento.
 - Los jobs son idempotentes y reintentables.
 - El worker reutiliza los módulos y sus contratos; no duplica lógica de negocio.
 
@@ -197,4 +207,4 @@ o una acción sin registro invalida esa evidencia.
 - Cumplimiento: cada plan de feature pasa el Constitution Check antes de diseñar y después de
   diseñar; los tests de arquitectura y reglas de ESLint son la verificación continua.
 
-**Version**: 1.0.1 | **Ratified**: 2026-10-16 | **Last Amended**: 2026-10-18
+**Version**: 1.1.0 | **Ratified**: 2026-10-16 | **Last Amended**: 2026-10-18

@@ -16,7 +16,7 @@ public class AuthenticationSurfaceTests(SqlServerFixture sql) : IdentidadApiTest
     public async Task ValidToken_EachSurface_Returns200()
     {
         Assert.Equal(HttpStatusCode.OK, await Status("/api/backoffice/_test/ping", await UserAsync(BackofficeRoles.Analista)));
-        Assert.Equal(HttpStatusCode.OK, await Status("/api/portal/_test/ping", token: TestUsers.CreatePortalToken("tercero-1")));
+        Assert.Equal(HttpStatusCode.OK, await Status("/api/portal/_test/ping", token: await TestUsers.CreatePortalTokenAsync(RuntimeConnection, Clock)));
     }
 
     [Fact]
@@ -25,7 +25,8 @@ public class AuthenticationSurfaceTests(SqlServerFixture sql) : IdentidadApiTest
 
     [Fact]
     public async Task PortalToken_InBackoffice_Returns401() =>
-        Assert.Equal(HttpStatusCode.Unauthorized, await Status("/api/backoffice/_test/ping", token: TestUsers.CreatePortalToken("t")));
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            await Status("/api/backoffice/_test/ping", token: await TestUsers.CreatePortalTokenAsync(RuntimeConnection, Clock)));
 
     [Fact]
     public async Task BackofficeToken_InPortal_Returns401() =>

@@ -87,6 +87,37 @@ namespace Diligencia.Modules.Identidad.Persistence.Migrations
                     b.ToTable("PasswordTokens", "identidad");
                 });
 
+            modelBuilder.Entity("Diligencia.Modules.Identidad.Persistence.PortalSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CasoId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<DateTime>("LastActivityUtc")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<DateTime?>("RevokedAtUtc")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<Guid>("TerceroId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CasoId");
+
+                    b.ToTable("PortalSessions", "identidad");
+                });
+
             modelBuilder.Entity("Diligencia.Modules.Identidad.Persistence.Session", b =>
                 {
                     b.Property<Guid>("Id")

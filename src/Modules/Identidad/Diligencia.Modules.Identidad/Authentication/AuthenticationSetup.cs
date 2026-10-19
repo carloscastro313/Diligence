@@ -40,7 +40,7 @@ internal static class AuthenticationSetup
                     NameClaimType = "sub",
                     RoleClaimType = "role",
                 };
-                if (scheme == AuthSchemes.Backoffice) o.Events = BackofficeEvents();
+                o.Events = scheme == AuthSchemes.Backoffice ? BackofficeEvents() : PortalEvents();
             });
         }
         return services;
@@ -94,6 +94,50 @@ internal static class AuthenticationSetup
             // Como mucho una escritura por minuto por sesión.
             if (now - session.LastActivityUtc > TimeSpan.FromSeconds(60))
                 await db.Sessions.Where(s => s.Id == sid).ExecuteUpdateAsync(s => s.SetProperty(x => x.LastActivityUtc, now), ct);
+        },
+    };
+
+    // Misma idea que el backoffice, con la sesión del tercero: el caso y el tercero salen de la base, no del token (R2).
+    private static JwtBearerEvents PortalEvents() => new()
+    {
+        OnMessageReceived = ctx =>
+        {
+            if (!ctx.Request.Headers.ContainsKey("Authorization")
+                && ctx.Request.Cookies.TryGetValue(SessionCookie.PortalName, out var token))
+                ctx.Token = token;
+            return Task.CompletedTask;
+        },
+        OnTokenValidated = async ctx =>
+        {
+            var sp = ctx.HttpContext.RequestServices;
+            var db = sp.GetRequiredService<IdentidadDbContext>();
+            var options = sp.GetRequiredService<IOptions<IdentidadOptions>>().Value;
+            var now = sp.GetRequiredService<TimeProvider>().GetUtcNow().UtcDateTime;
+            var ct = ctx.HttpContext.RequestAborted;
+
+            var principal = ctx.Principal!;
+            if (!Guid.TryParse(principal.FindFirstValue("sid"), out var sid) || principal.FindFirstValue("sub") is not { } sub)
+            {
+                ctx.Fail("Token sin sesión.");
+                return;
+            }
+
+            var session = await db.PortalSessions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == sid, ct);
+            if (session is null || sub != $"tercero:{session.TerceroId}" || session.RevokedAtUtc is not null
+                || now >= session.ExpiresAtUtc
+                || now - session.LastActivityUtc >= TimeSpan.FromMinutes(options.PortalSessionIdleMinutes))
+            {
+                ctx.Fail("Sesión inválida.");
+                return;
+            }
+
+            var identity = (ClaimsIdentity)principal.Identity!;
+            identity.AddClaim(new Claim("caso", session.CasoId.ToString()));
+            identity.AddClaim(new Claim("tercero", session.TerceroId.ToString()));
+
+            // Como mucho una escritura por minuto por sesión.
+            if (now - session.LastActivityUtc > TimeSpan.FromSeconds(60))
+                await db.PortalSessions.Where(s => s.Id == sid).ExecuteUpdateAsync(s => s.SetProperty(x => x.LastActivityUtc, now), ct);
         },
     };
 

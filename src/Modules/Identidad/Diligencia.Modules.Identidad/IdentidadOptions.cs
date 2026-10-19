@@ -6,6 +6,8 @@ internal sealed class IdentidadOptions
 
     public int SessionIdleMinutes { get; set; } = 30;
     public int SessionAbsoluteHours { get; set; } = 8;
+    public int PortalSessionIdleMinutes { get; set; } = 30;
+    public int PortalSessionAbsoluteHours { get; set; } = 8;
     public int MaxFailedLogins { get; set; } = 5;
     public int LockoutMinutes { get; set; } = 15;
     public int ResetTokenMinutes { get; set; } = 60;

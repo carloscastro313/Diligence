@@ -6,6 +6,14 @@ internal sealed class DocumentosDbContext(DbContextOptions<DocumentosDbContext> 
 {
     public const string Schema = "documentos";
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+    public DbSet<Documento> Documentos => Set<Documento>();
+    public DbSet<DocumentoContenido> Contenidos => Set<DocumentoContenido>();
+    public DbSet<ParametrosDocumentos> Parametros => Set<ParametrosDocumentos>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
         modelBuilder.HasDefaultSchema(Schema);
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(DocumentosDbContext).Assembly,
+            t => t.Namespace == typeof(DocumentosDbContext).Namespace);
+    }
 }

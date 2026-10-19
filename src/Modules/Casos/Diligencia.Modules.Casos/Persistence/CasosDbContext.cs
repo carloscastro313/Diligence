@@ -9,6 +9,8 @@ internal sealed class CasosDbContext(DbContextOptions<CasosDbContext> options) :
     public DbSet<Caso> Casos => Set<Caso>();
     public DbSet<Solicitud> Solicitudes => Set<Solicitud>();
     public DbSet<EnlacePortal> EnlacesPortal => Set<EnlacePortal>();
+    public DbSet<CodigoIngreso> CodigosIngreso => Set<CodigoIngreso>();
+    public DbSet<FormularioTercero> FormulariosTercero => Set<FormularioTercero>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

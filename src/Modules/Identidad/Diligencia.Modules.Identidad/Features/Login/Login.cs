@@ -1,6 +1,7 @@
 using Diligencia.BuildingBlocks.Persistence;
 using Diligencia.Modules.Auditoria.Contracts;
 using Diligencia.Modules.Identidad.Authentication;
+using Diligencia.Modules.Identidad.Contracts;
 using Diligencia.Modules.Identidad.Features.Shared;
 using Diligencia.Modules.Identidad.Persistence;
 using FluentValidation;
@@ -62,7 +63,7 @@ internal sealed class LoginHandler(
                 await db.SaveChangesAsync(false, ct);
                 http.HttpContext!.ActAs(user.Id);
                 await audit.RecordAsync(new AuditEntry(AuditAction.LoginSucceeded, "Usuario", user.Id.ToString()), tx, ct);
-                result = new LoginResult(tokens.Issue(user.Id, session.Id, session.ExpiresAtUtc), session.ExpiresAtUtc);
+                result = new LoginResult(tokens.Issue(AuthSchemes.Backoffice, user.Id.ToString(), session.Id, session.ExpiresAtUtc), session.ExpiresAtUtc);
                 return;
             }
 

@@ -60,6 +60,8 @@ jobs:
         run: scripts/e2e-discover.sh
       - run: node scripts/e2e-seed.mjs
       - run: npm run e2e -w apps/backoffice
+      # Usa BASE_URL (backoffice, para crear el caso), MAILPIT_URL y las credenciales del solicitante del job.
+      - run: npm run e2e -w apps/portal
       - if: failure()
         run: tail -n 200 apphost.log
 

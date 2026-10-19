@@ -54,11 +54,47 @@ internal sealed class EnlacePortalConfiguration : IEntityTypeConfiguration<Enlac
         b.Property(e => e.Destinatario).HasMaxLength(254).IsRequired();
         b.Property(e => e.VenceUtc).HasColumnType("datetime2");
         b.Property(e => e.UltimoIntentoUtc).HasColumnType("datetime2");
+        b.Property(e => e.FallidosConsecutivos).HasDefaultValue(0);
+        b.Property(e => e.BloqueadoHastaUtc).HasColumnType("datetime2");
         b.Property(e => e.CreatedAtUtc).HasColumnType("datetime2");
         b.Property(e => e.UpdatedAtUtc).HasColumnType("datetime2");
         b.Property(e => e.Entrega).HasColumnType("nvarchar(32)").HasConversion<string>();
         b.HasIndex(e => e.CasoId).IsUnique();
         b.HasIndex(e => e.TokenHash).IsUnique().HasFilter("[TokenHash] IS NOT NULL");
         b.HasOne<Caso>().WithMany().HasForeignKey(e => e.CasoId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+internal sealed class CodigoIngresoConfiguration : IEntityTypeConfiguration<CodigoIngreso>
+{
+    public void Configure(EntityTypeBuilder<CodigoIngreso> b)
+    {
+        b.ToTable("CodigosIngreso");
+        b.HasKey(c => c.Id);
+        b.Property(c => c.CodigoHash).HasColumnType("binary(32)");
+        b.Property(c => c.VenceUtc).HasColumnType("datetime2");
+        b.Property(c => c.Estado).HasColumnType("nvarchar(32)").HasConversion<string>();
+        b.Property(c => c.CreatedAtUtc).HasColumnType("datetime2");
+        b.Property(c => c.UpdatedAtUtc).HasColumnType("datetime2");
+        b.HasIndex(c => new { c.EnlaceId, c.CreatedAtUtc });
+        b.HasOne<EnlacePortal>().WithMany().HasForeignKey(c => c.EnlaceId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+internal sealed class FormularioTerceroConfiguration : IEntityTypeConfiguration<FormularioTercero>
+{
+    public void Configure(EntityTypeBuilder<FormularioTercero> b)
+    {
+        b.ToTable("FormulariosTercero");
+        b.HasKey(f => f.CasoId);
+        b.Property(f => f.Datos).HasColumnType("nvarchar(max)").IsRequired();
+        b.Property(f => f.Estado).HasColumnType("nvarchar(32)").HasConversion<string>();
+        b.Property(f => f.GuardadoUtc).HasColumnType("datetime2");
+        b.Property(f => f.EnviadoUtc).HasColumnType("datetime2");
+        b.Property(f => f.EnviadoPor).HasMaxLength(128);
+        b.Property(f => f.Version).IsRowVersion();
+        b.Property(f => f.CreatedAtUtc).HasColumnType("datetime2");
+        b.Property(f => f.UpdatedAtUtc).HasColumnType("datetime2");
+        b.HasOne<Caso>().WithOne().HasForeignKey<FormularioTercero>(f => f.CasoId).OnDelete(DeleteBehavior.Restrict);
     }
 }

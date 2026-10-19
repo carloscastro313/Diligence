@@ -1,0 +1,406 @@
+openapi: 3.1.0
+info:
+  title: Diligencia — Portal del tercero
+  version: 0.4.0
+  description: |
+    RF-05 a RF-08. Rutas bajo /api/portal (esquema JWT Portal, cookie `dlg_pt`).
+    Anónimos (lista cerrada, rate limit `portal-acceso` por IP): POST /acceso/codigo y POST /acceso.
+    Todo lo demás exige sesión de portal; el caso sale SIEMPRE de la sesión, ninguna ruta recibe
+    un id de caso (FR-006). Nunca se devuelven hallazgos, verificaciones, puntajes ni notas internas.
+    Errores: ProblemDetails (application/problem+json) con `correlationId`.
+    401 = sin sesión válida o vencida por inactividad (30 min).
+    Una ruta de backoffice al final: configuración del tamaño máximo (Administrador).
+servers:
+  - url: /api/portal
+
+paths:
+  /acceso/codigo:
+    post:
+      summary: Enviar (o reenviar) el código de ingreso al correo del caso (FR-001 a FR-004)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string, maxLength: 100, description: Token del enlace (fragmento `#t=`). }
+      responses:
+        '202':
+          description: Código emitido y enviado. El anterior, si había, quedó invalidado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  correo: { type: string, example: 'c***@example.com' }
+                  venceEnMinutos: { type: integer, example: 10 }
+        '400': { $ref: '#/components/responses/ValidationProblem' }
+        '404': { $ref: '#/components/responses/EnlaceInvalido' }
+        '429': { $ref: '#/components/responses/Limite' }
+        '503':
+          description: El correo no se pudo enviar; reintentar. El código emitido quedó invalidado.
+          content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+
+  /acceso:
+    post:
+      summary: Ingresar con enlace + código; crea la sesión del portal
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, codigo]
+              properties:
+                token: { type: string, maxLength: 100 }
+                codigo: { type: string, pattern: '^[0-9]{6}$' }
+      responses:
+        '204':
+          description: Ingreso correcto. `Set-Cookie dlg_pt` (HttpOnly, Secure, SameSite=Strict, Path=/api/portal).
+        '400': { $ref: '#/components/responses/ValidationProblem' }
+        '401':
+          description: |
+            Código incorrecto, vencido o ya usado. `codigoInvalidado = true` cuando fue el 5.º intento
+            fallido o no hay código vigente: hay que pedir uno nuevo.
+          content:
+            application/problem+json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Problem'
+                  - type: object
+                    properties:
+                      codigoInvalidado: { type: boolean }
+        '404': { $ref: '#/components/responses/EnlaceInvalido' }
+        '429': { $ref: '#/components/responses/Limite' }
+
+  /caso:
+    get:
+      summary: Inicio del caso de la sesión (US1-2)
+      security: [{ portalCookie: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CasoPortal' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+
+  /caso/formulario:
+    get:
+      summary: Formulario guardado (vacío si nunca se guardó)
+      security: [{ portalCookie: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Formulario' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+    put:
+      summary: Guardar a medias (RF-08). Valida solo la forma, nada obligatorio.
+      security: [{ portalCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GuardarFormulario' }
+      responses:
+        '200':
+          description: Guardado. `sobrescrito = true` si otra pestaña había guardado desde que se leyó `version`.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version: { type: string, description: rowversion en base64 }
+                  guardadoUtc: { type: string, format: date-time }
+                  sobrescrito: { type: boolean }
+        '400': { $ref: '#/components/responses/ValidationProblem' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '409': { $ref: '#/components/responses/NoEditable' }
+
+  /caso/formulario/envio:
+    post:
+      summary: Guardar y enviar (RF-06). Valida todo y exige los documentos obligatorios.
+      description: |
+        En una transacción: valida `datos` con las reglas de envío del tipo de persona, guarda,
+        verifica documentos obligatorios vigentes, pasa el formulario a Enviado y el caso a
+        EnVerificacion, y registra ambos cambios en la bitácora.
+      security: [{ portalCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [datos]
+              description: Sin `version`; el envío no compara con otras pestañas (lo que manda es lo que queda).
+              properties:
+                datos: { $ref: '#/components/schemas/FormularioDatos' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Formulario' }
+        '400':
+          description: |
+            Errores por ruta en camelCase (`domicilioFiscal.calle`, `beneficiarios[1].porcentaje`) y
+            `documentos` con un mensaje por cada obligatorio que falta.
+          content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '409': { $ref: '#/components/responses/NoEditable' }
+
+  /caso/documentos:
+    get:
+      summary: Documentos requeridos para el tipo de persona y el vigente de cada uno (FR-016)
+      security: [{ portalCookie: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tamanoMaximoBytes: { type: integer }
+                  formatos: { type: array, items: { type: string }, example: [PDF, JPG, PNG] }
+                  documentos:
+                    type: array
+                    items: { $ref: '#/components/schemas/DocumentoRequerido' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+
+  /caso/documentos/{tipo}:
+    parameters:
+      - name: tipo
+        in: path
+        required: true
+        schema: { $ref: '#/components/schemas/TipoDocumento' }
+    put:
+      summary: Subir o reemplazar el documento de un tipo (RF-07)
+      security: [{ portalCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [archivo]
+              properties:
+                archivo: { type: string, format: binary }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentoCargado' }
+        '400':
+          description: |
+            Tipo no corresponde a la persona, formato no permitido (contenido real distinto de
+            PDF/JPG/PNG; el mensaje lista los formatos) o archivo ilegible (truncado: PDF sin `%%EOF`, imagen sin cierre).
+            Un PDF cifrado no se rechaza acá (research R9).
+          content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '409': { $ref: '#/components/responses/NoEditable' }
+        '413':
+          description: Supera el tamaño máximo vigente; el mensaje indica el máximo en MB.
+          content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    delete:
+      summary: Eliminar el documento vigente de un tipo (solo antes del envío; FR-017)
+      security: [{ portalCookie: [] }]
+      responses:
+        '204': { description: Eliminado (baja lógica). }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { description: No hay documento vigente de ese tipo en el caso de la sesión. }
+        '409': { $ref: '#/components/responses/NoEditable' }
+
+  /api/backoffice/documentos/configuracion:
+    servers: [{ url: / }]
+    get:
+      summary: Tamaño máximo vigente (policy Administrator)
+      security: [{ backofficeCookie: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConfiguracionDocumentos' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { description: Sin rol Administrador (se registra AccessDenied). }
+    put:
+      summary: Cambiar el tamaño máximo (FR-014). Aplica a las cargas siguientes.
+      security: [{ backofficeCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConfiguracionDocumentos' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConfiguracionDocumentos' }
+        '400': { $ref: '#/components/responses/ValidationProblem' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { description: Sin rol Administrador. }
+
+components:
+  securitySchemes:
+    portalCookie: { type: apiKey, in: cookie, name: dlg_pt }
+    backofficeCookie: { type: apiKey, in: cookie, name: dlg_bo }
+
+  responses:
+    EnlaceInvalido:
+      description: |
+        Enlace inexistente, vencido o de un caso que no está en "Espera del tercero". Mensaje único:
+        "El enlace no es válido o venció. Comunicate con quien te pidió el alta." Sin datos del caso.
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    Limite:
+      description: |
+        Límite de envíos (5 códigos por enlace por hora), enlace bloqueado por intentos fallidos
+        (30 min) o límite por IP. Header `Retry-After` en segundos cuando se conoce.
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    NoEditable:
+      description: El formulario ya fue enviado (o el caso salió de "Espera del tercero"); solo lectura.
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    Unauthenticated:
+      description: Sin sesión válida.
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    ValidationProblem:
+      description: Errores por campo (`errors`: ruta → mensajes).
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+
+  schemas:
+    Problem:
+      type: object
+      properties:
+        title: { type: string }
+        status: { type: integer }
+        errors: { type: object, additionalProperties: { type: array, items: { type: string } } }
+        correlationId: { type: string }
+
+    CasoPortal:
+      type: object
+      properties:
+        razonSocial: { type: string }
+        cuit: { type: string }
+        tipoPersona: { type: string, enum: [Humana, Juridica] }
+        estado: { type: string, enum: [EsperaTercero, EnVerificacion, EnAprobacion, Aprobado, Rechazado, Abandonado] }
+        editable: { type: boolean, description: 'EsperaTercero y formulario no enviado' }
+        pendientes:
+          type: array
+          description: Tareas pendientes legibles; vacío tras el envío.
+          items: { type: string, example: 'Subir: Estatuto o contrato social' }
+
+    Formulario:
+      type: object
+      properties:
+        estado: { type: string, enum: [Borrador, Enviado] }
+        datos: { $ref: '#/components/schemas/FormularioDatos' }
+        version: { type: [string, 'null'] }
+        guardadoUtc: { type: [string, 'null'], format: date-time }
+        enviadoUtc: { type: [string, 'null'], format: date-time }
+
+    GuardarFormulario:
+      type: object
+      required: [datos]
+      properties:
+        datos: { $ref: '#/components/schemas/FormularioDatos' }
+        version: { type: [string, 'null'], description: La que devolvió el último GET/PUT. }
+
+    FormularioDatos:
+      description: Ver data-model.md (tabla FormularioDatos) para reglas y obligatoriedad por persona.
+      type: object
+      properties:
+        condicionIva: { type: string, enum: [ResponsableInscripto, Monotributo, Exento, NoAlcanzado, ConsumidorFinal] }
+        fechaConstitucion: { type: string, format: date }
+        numeroInscripcion: { type: string, maxLength: 50 }
+        fechaNacimiento: { type: string, format: date }
+        nacionalidad: { $ref: '#/components/schemas/Pais' }
+        documento:
+          type: object
+          properties:
+            tipo: { type: string, enum: [DNI, Pasaporte] }
+            numero: { type: string, maxLength: 20 }
+        domicilioFiscal: { $ref: '#/components/schemas/Domicilio' }
+        domicilioLegalIgualFiscal: { type: boolean }
+        domicilioLegal: { $ref: '#/components/schemas/Domicilio' }
+        actividad:
+          type: object
+          properties:
+            descripcion: { type: string, maxLength: 200 }
+            pais: { $ref: '#/components/schemas/Pais' }
+        beneficiarios:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/Beneficiario' }
+        sinBeneficiarios:
+          type: object
+          properties:
+            explicacion: { type: string, minLength: 20, maxLength: 1000 }
+        representantes:
+          type: array
+          maxItems: 10
+          items:
+            type: object
+            properties:
+              nombre: { type: string, maxLength: 200 }
+              documento: { type: string, maxLength: 20 }
+              pep: { $ref: '#/components/schemas/Pep' }
+        pep: { $ref: '#/components/schemas/Pep' }
+        origenFondos: { type: string, minLength: 10, maxLength: 2000 }
+
+    Domicilio:
+      type: object
+      properties:
+        calle: { type: string, maxLength: 200 }
+        numero: { type: string, maxLength: 20 }
+        piso: { type: string, maxLength: 10 }
+        depto: { type: string, maxLength: 10 }
+        localidad: { type: string, maxLength: 100 }
+        provincia: { type: string, maxLength: 100 }
+        codigoPostal: { type: string, maxLength: 10 }
+        pais: { $ref: '#/components/schemas/Pais' }
+
+    Beneficiario:
+      type: object
+      properties:
+        nombre: { type: string, maxLength: 200 }
+        documento: { type: string, maxLength: 20 }
+        nacionalidad: { $ref: '#/components/schemas/Pais' }
+        porcentaje: { type: number, exclusiveMinimum: 0, maximum: 100, description: 'Suma de la lista ≤ 100' }
+        pep: { $ref: '#/components/schemas/Pep' }
+
+    Pep:
+      type: object
+      properties:
+        esPep: { type: boolean }
+        cargo: { type: string, maxLength: 200, description: Obligatorio si esPep. }
+        organismo: { type: string, maxLength: 200, description: Obligatorio si esPep. }
+
+    Pais: { type: string, pattern: '^[A-Z]{2}$', description: ISO 3166-1 alfa-2 }
+
+    TipoDocumento:
+      type: string
+      enum: [Estatuto, ConstanciaArca, ActaAutoridades, DocumentoRepresentante, UltimoBalance, DniFrente, DniDorso, ConstanciaDomicilio]
+
+    DocumentoRequerido:
+      type: object
+      properties:
+        tipo: { $ref: '#/components/schemas/TipoDocumento' }
+        nombre: { type: string, example: Estatuto o contrato social }
+        obligatorio: { type: boolean }
+        cargado: { oneOf: [{ $ref: '#/components/schemas/DocumentoCargado' }, { type: 'null' }] }
+
+    DocumentoCargado:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        nombreOriginal: { type: string }
+        contentType: { type: string, enum: [application/pdf, image/jpeg, image/png] }
+        tamanoBytes: { type: integer }
+        cargadoUtc: { type: string, format: date-time }
+
+    ConfiguracionDocumentos:
+      type: object
+      required: [tamanoMaximoMb]
+      properties:
+        tamanoMaximoMb: { type: integer, minimum: 1, maximum: 50 }
